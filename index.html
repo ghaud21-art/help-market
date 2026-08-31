@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>도움 벼룩시장</title>
+<style>
+  :root {
+    --bg: #f7f1e8; --card: #fffdf8; --ink: #4a3f35; --muted: #8a7c6d; --line: #e8ddcc;
+    --green: #cdeec2; --green-line: #86c97c; --green-dark: #3e7d33;
+    --yellow: #ffe9a8; --yellow-line: #e8c95c; --yellow-dark: #8a6d0d;
+    --accent: #d97742; --accent-dark: #b85c2c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: var(--bg); color: var(--ink); }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 14px 14px 90px; }
+  .hidden { display: none !important; }
+
+  .app-head { text-align: center; padding: 14px 0 4px; }
+  .app-head h1 { font-size: 21px; font-weight: 800; color: var(--accent-dark); display: inline-flex; align-items: center; gap: 8px; }
+  .goal { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: 0 3px 10px rgba(120,90,50,.07); margin-top: 12px; }
+  label.fld { display: block; font-size: 13px; font-weight: 700; color: var(--accent-dark); margin: 12px 0 6px; }
+  input.txt, textarea.ta {
+    width: 100%; padding: 12px 13px; font-size: 15px; font-family: inherit;
+    border: 1.5px solid var(--line); border-radius: 11px; background: #fff; color: var(--ink);
+  }
+  input.txt:focus, textarea.ta:focus { outline: none; border-color: var(--accent); }
+  textarea.ta { min-height: 76px; line-height: 1.55; resize: vertical; }
+  .btn {
+    display: block; width: 100%; padding: 13px; margin-top: 14px; font-size: 15px; font-weight: 800;
+    font-family: inherit; color: #fff; background: var(--accent); border: none; border-radius: 12px; cursor: pointer;
+  }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.sub { background: #efe6d7; color: var(--ink); font-weight: 700; }
+  .err { display: none; margin-top: 10px; padding: 10px 13px; border-radius: 9px; background: #fbe9e5; color: #a83c22; font-size: 13px; line-height: 1.5; }
+  .err.on { display: block; }
+  .notice { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 10px; line-height: 1.6; }
+
+  .status-bar { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+  .status-chip { background: var(--accent); color: #fff; font-weight: 800; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
+  .status-bar .who { margin-left: auto; }
+
+  /* 포스트잇 */
+  .postit { position: relative; border-radius: 4px 4px 12px 4px; padding: 12px 13px 10px; font-size: 13.5px; line-height: 1.5;
+    box-shadow: 2px 3px 8px rgba(120,90,50,.14); border-top: 14px solid; word-break: break-word; }
+  .postit.green { background: var(--green); border-color: var(--green-line); }
+  .postit.yellow { background: var(--yellow); border-color: var(--yellow-line); }
+  .postit .owner { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; margin-bottom: 5px; }
+  .postit.green .owner { color: var(--green-dark); }
+  .postit.yellow .owner { color: var(--yellow-dark); }
+  .postit.matched { opacity: .78; }
+  .postit .badge { position: absolute; top: -9px; right: 8px; background: #fff; border: 1.5px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 10px; font-weight: 800; color: var(--accent-dark); display: flex; align-items: center; gap: 3px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .grid .postit:nth-child(odd) { transform: rotate(-1.2deg); }
+  .grid .postit:nth-child(even) { transform: rotate(1deg); }
+  .grid .postit.mine { outline: 2.5px dashed var(--accent); outline-offset: 3px; }
+
+  /* 작성 폼 */
+  .type-toggle { display: flex; gap: 8px; margin-top: 4px; }
+  .type-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 8px;
+    font-size: 13.5px; font-weight: 800; font-family: inherit; border-radius: 11px; border: 2px solid var(--line); background: #fff; color: var(--muted); cursor: pointer; }
+  .type-btn.g.on { background: var(--green); border-color: var(--green-line); color: var(--green-dark); }
+  .type-btn.y.on { background: var(--yellow); border-color: var(--yellow-line); color: var(--yellow-dark); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+
+  /* 필터/검색 */
+  .filter-bar { display: flex; gap: 6px; margin-top: 12px; }
+  .filter-bar .f { padding: 7px 13px; font-size: 12.5px; font-weight: 700; font-family: inherit; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--muted); cursor: pointer; }
+  .filter-bar .f.on { border-color: var(--accent); background: #fbe9dd; color: var(--accent-dark); }
+  .search-row { position: relative; margin-top: 8px; }
+  .search-row svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); }
+  .search-row input { padding-left: 34px; }
+
+  .sec-title { font-size: 13px; font-weight: 800; color: var(--accent-dark); margin: 4px 0 2px; display: flex; align-items: center; gap: 6px; }
+  .count-line { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* 나눔 기록 버튼(하단 고정) + 모달 */
+  .fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; width: min(480px, calc(100% - 28px));
+    padding: 14px; font-size: 15px; font-weight: 800; font-family: inherit; color: #fff; background: var(--accent-dark);
+    border: none; border-radius: 999px; cursor: pointer; box-shadow: 0 6px 18px rgba(120,60,20,.3); display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(60,45,30,.5); z-index: 40; display: none; overflow-y: auto; padding: 24px 14px; }
+  .modal-bg.on { display: block; }
+  .modal { max-width: 480px; margin: 0 auto; background: var(--bg); border-radius: 16px; padding: 18px; }
+  .modal h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; }
+  .modal h3 button { margin-left: auto; border: none; background: #efe6d7; border-radius: 8px; padding: 6px 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink); cursor: pointer; }
+  select.sel { width: 100%; padding: 12px; font-size: 15px; font-family: inherit; border: 1.5px solid var(--line); border-radius: 11px; background: #fff; color: var(--ink); }
+  .pick-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .pick { display: flex; align-items: flex-start; gap: 9px; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--line); background: #fff; cursor: pointer; font-size: 13px; line-height: 1.45; }
+  .pick input { margin-top: 2px; accent-color: var(--accent); }
+  .pick.on { border-color: var(--accent); background: #fbf1e7; }
+  .pick .tag { font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 1px 6px; margin-right: 4px; }
+  .pick .tag.g { background: var(--green); color: var(--green-dark); }
+  .pick .tag.y { background: var(--yellow); color: var(--yellow-dark); }
+
+  .match-item { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 13px; font-size: 13px; line-height: 1.5; margin-top: 8px; }
+  .match-item b { color: var(--accent-dark); }
+
+  .big-msg { text-align: center; padding: 34px 10px; }
+  .big-msg .t { font-size: 17px; font-weight: 800; margin-top: 12px; }
+  .big-msg .d { font-size: 13.5px; color: var(--muted); margin-top: 8px; line-height: 1.7; }
+  .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); margin: 0 auto; animation: pulse 1.4s ease infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: .5; } 50% { transform: scale(1.5); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app-head">
+    <h1><span id="icon-basket"></span>도움 벼룩시장</h1>
+    <p class="goal">받는 행복과 주는 행복, 오늘 둘 다 느껴보는 게 목표입니다.</p>
+  </header>
+
+  <!-- 입장 -->
+  <section id="s-join">
+    <div class="card">
+      <label class="fld">반 코드</label>
+      <input class="txt" id="in-code" inputmode="numeric" placeholder="선생님이 알려준 숫자">
+      <label class="fld">학번</label>
+      <input class="txt" id="in-sid" inputmode="numeric" placeholder="예: 20315">
+      <label class="fld">이름</label>
+      <input class="txt" id="in-name" placeholder="예: 김하늘">
+      <button class="btn" id="btn-join">입장하기</button>
+      <div class="err" id="join-err"></div>
+      <p class="notice">구글 계정이 필요 없어요. 나갔다 들어와도 이어집니다.</p>
+    </div>
+  </section>
+
+  <!-- 메인 -->
+  <section id="s-main" class="hidden">
+    <div class="status-bar">
+      <span class="status-chip" id="st-chip">대기</span>
+      <span id="st-desc"></span>
+      <span class="who" id="st-who"></span>
+    </div>
+
+    <!-- 대기 -->
+    <div id="v-wait" class="card hidden">
+      <div class="big-msg">
+        <div class="pulse"></div>
+        <p class="t">잠시만 기다려 주세요</p>
+        <p class="d">선생님이 활동을 시작하면<br>이 화면이 자동으로 바뀝니다.</p>
+      </div>
+    </div>
+
+    <!-- 작성 -->
+    <div id="v-write" class="hidden">
+      <div class="card">
+        <p class="sec-title">포스트잇 붙이기</p>
+        <p class="hint">초록(줄 수 있는 도움)과 노랑(받고 싶은 도움)을 각각 1개 이상 붙여 주세요. 사소한 것일수록 좋아요.</p>
+        <div class="type-toggle" style="margin-top:10px">
+          <button type="button" class="type-btn g on" id="tb-green"><span id="icon-give"></span>줄 수 있어요</button>
+          <button type="button" class="type-btn y" id="tb-yellow"><span id="icon-need"></span>받고 싶어요</button>
+        </div>
+        <textarea class="ta" id="pi-content" maxlength="80" style="margin-top:10px"></textarea>
+        <p class="hint" id="pi-hint"></p>
+        <button class="btn" id="btn-add">붙이기</button>
+        <div class="err" id="write-err"></div>
+      </div>
+      <div class="card">
+        <p class="sec-title">내가 붙인 포스트잇 <span class="count-line" id="my-count"></span></p>
+        <div class="grid" id="my-grid"></div>
+      </div>
+    </div>
+
+    <!-- 시장 -->
+    <div id="v-market" class="hidden">
+      <div class="card">
+        <p class="sec-title">시장 구경하기</p>
+        <p class="hint">마음이 가는 포스트잇을 찾았다면, 교실에서 직접 그 친구를 찾아가 이야기해 보세요. 나눔이 이루어지면 아래 [나눔 기록하기]를 눌러요.</p>
+        <div class="filter-bar">
+          <button class="f on" data-f="all">전체</button>
+          <button class="f" data-f="초록">줄 수 있어요</button>
+          <button class="f" data-f="노랑">받고 싶어요</button>
+        </div>
+        <div class="search-row">
+          <span id="icon-search"></span>
+          <input class="txt" id="mk-search" placeholder="키워드 검색 (예: 수학)">
+        </div>
+        <p class="count-line" id="mk-count"></p>
+        <div class="grid" id="mk-grid"></div>
+      </div>
+      <div class="card">
+        <p class="sec-title">포스트잇 더 붙이기</p>
+        <div class="type-toggle">
+          <button type="button" class="type-btn g on" id="tb2-green"><span id="icon-give2"></span>줄 수 있어요</button>
+          <button type="button" class="type-btn y" id="tb2-yellow"><span id="icon-need2"></span>받고 싶어요</button>
+        </div>
+        <textarea class="ta" id="pi2-content" maxlength="80" style="margin-top:10px" placeholder="시장을 둘러보다 생각난 도움이 있다면 추가로 붙여요"></textarea>
+        <button class="btn sub" id="btn-add2">붙이기</button>
+        <div class="err" id="market-err"></div>
+      </div>
+      <div class="card" id="my-matches-card">
+        <p class="sec-title">나의 나눔 기록</p>
+        <div id="my-matches"></div>
+      </div>
+    </div>
+
+    <!-- 성찰 -->
+    <div id="v-reflect" class="hidden">
+      <div class="card" id="reflect-form">
+        <p class="sec-title">오늘의 나눔, 어떤 마음이었나요?</p>
+        <label class="fld">도움을 줄 때 어떤 마음이었나요?</label>
+        <textarea class="ta" id="rf-give" placeholder="한 줄 이상 자유롭게 써 주세요"></textarea>
+        <label class="fld">도움을 받을 때 어떤 마음이었나요?</label>
+        <textarea class="ta" id="rf-receive" placeholder="한 줄 이상 자유롭게 써 주세요"></textarea>
+        <button class="btn" id="btn-reflect">제출하기</button>
+        <div class="err" id="reflect-err"></div>
+      </div>
+      <div class="card hidden" id="reflect-done">
+        <div class="big-msg">
+          <span id="icon-check"></span>
+          <p class="t">성찰까지 완료했어요</p>
+          <p class="d">받는 행복과 주는 행복,<br>오늘 둘 다 느껴봤나요?</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 종료 -->
+    <div id="v-end" class="card hidden">
+      <div class="big-msg">
+        <span id="icon-heart"></span>
+        <p class="t">오늘의 벼룩시장이 문을 닫았습니다</p>
+        <p class="d" id="end-summary"></p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<button class="fab hidden" id="btn-share"><span id="icon-link"></span>나눔 기록하기</button>
+
+<!-- 나눔 기록 모달 -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3>나눔 기록하기 <button type="button" id="btn-modal-close">닫기</button></h3>
+    <label class="fld">누구와 나눴나요?</label>
+    <select class="sel" id="sh-partner"></select>
+    <label class="fld">어떤 포스트잇이 쓰였나요? (1개 이상)</label>
+    <div class="pick-list" id="sh-picks"></div>
+    <label class="fld">주고받은 도움 한 줄 (비우면 포스트잇 내용으로 기록)</label>
+    <input class="txt" id="sh-note" maxlength="100" placeholder="예: 이차함수 그래프 설명해 줌">
+    <button class="btn" id="btn-share-submit">기록하기</button>
+    <div class="err" id="share-err"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- 서버 전송 계층: GAS 안에서는 google.script.run, 정적 호스팅에서는 ?api= JSON POST ----------
+  var API = new URLSearchParams(location.search).get('api');
+  function apiUrl() {
+    if (!API) return null;
+    return /^https?:\/\//i.test(API) ? API : 'https://script.google.com/macros/s/' + API.trim() + '/exec';
+  }
+  function call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      return new Promise(function (res, rej) {
+        var r = google.script.run.withSuccessHandler(res).withFailureHandler(function (e) {
+          rej(new Error((e && e.message) || '서버 연결 오류'));
+        });
+        r[fn].apply(r, args);
+      });
+    }
+    var u = apiUrl();
+    if (u) {
+      return fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: fn, args: args }) })
+        .then(function (r) { if (!r.ok) throw new Error('서버 연결 오류 (' + r.status + ')'); return r.json(); });
+    }
+    return Promise.reject(new Error('접속 주소가 완전하지 않아요. 선생님이 공유한 전체 링크로 접속해 주세요.'));
+  }
+  async function api(fn) {
+    var res = await call.apply(null, arguments);
+    if (res && res.ok === false) throw new Error(res.error || '오류가 발생했습니다.');
+    return res;
+  }
+
+  // ---------- SVG 아이콘 (이모지 금지) ----------
+  function svg(d, size, color, extra) {
+    return '<svg width="' + (size || 18) + '" height="' + (size || 18) + '" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="' + d + '" stroke="' + (color || 'currentColor') + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ' + (extra || '') + '/></svg>';
+  }
+  var IC = {
+    basket: 'M4 10 H20 L18 20 H6 Z M8 10 L12 4 L16 10 M9.5 14 V16.5 M14.5 14 V16.5',
+    give: 'M12 20 C7 16 4 13 4 9.5 C4 7 6 5 8.5 5 C10 5 11.3 5.8 12 7 C12.7 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 13 17 16 12 20 Z',
+    need: 'M12 3 V13 M12 13 L8 9.5 M12 13 L16 9.5 M5 16 V19 H19 V16',
+    search: 'M10.5 4 a6.5 6.5 0 1 0 0 13 a6.5 6.5 0 0 0 0 -13 Z M15.5 15.5 L20 20',
+    link: 'M9 14 L15 8 M8 11 L6.5 12.5 a3.5 3.5 0 0 0 5 5 L13 16 M16 13 L17.5 11.5 a3.5 3.5 0 0 0 -5 -5 L11 8',
+    check: 'M4 12.5 L9.5 18 L20 6',
+    heart: 'M12 20 C7 16 4 13 4 9.5 C4 7 6 5 8.5 5 C10 5 11.3 5.8 12 7 C12.7 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 13 17 16 12 20 Z'
+  };
+  document.getElementById('icon-basket').innerHTML = svg(IC.basket, 24, '#b85c2c');
+  document.getElementById('icon-give').innerHTML = svg(IC.give, 16);
+  document.getElementById('icon-need').innerHTML = svg(IC.need, 16);
+  document.getElementById('icon-give2').innerHTML = svg(IC.give, 16);
+  document.getElementById('icon-need2').innerHTML = svg(IC.need, 16);
+  document.getElementById('icon-search').innerHTML = svg(IC.search, 16, '#8a7c6d');
+  document.getElementById('icon-link').innerHTML = svg(IC.link, 18, '#ffffff');
+  document.getElementById('icon-check').innerHTML = svg(IC.check, 40, '#3e7d33');
+  document.getElementById('icon-heart').innerHTML = svg(IC.heart, 40, '#d97742');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ---------- 상태 ----------
+  var S = { sid: '', name: '', token: '', data: null, filter: 'all', search: '', pollId: null };
+  var LS_KEY = 'hm_session';
+
+  var PLACEHOLDERS_G = ['수학 문제 풀이 차근차근 설명해줄 수 있어요', '필기 노트 빌려줄 수 있어요', '축구 리프팅 알려줄 수 있어요', '그림 그리는 법 알려줄 수 있어요'];
+  var PLACEHOLDERS_Y = ['매점 갈 때 같이 가줄 사람', '영어 발음 봐줄 사람', '발표할 때 덜 떨리는 방법 아는 사람', '자전거 타는 법 알려줄 사람'];
+  var writeType = '초록', marketType = '초록';
+
+  function setHint() {
+    var arr = writeType === '초록' ? PLACEHOLDERS_G : PLACEHOLDERS_Y;
+    var ex = arr[Math.floor(Math.random() * arr.length)];
+    document.getElementById('pi-content').placeholder = '예: ' + ex;
+    document.getElementById('pi-hint').textContent = writeType === '초록'
+      ? '내가 해줄 수 있는 작은 도움을 써요.' : '받고 싶은 도움을 부담 없이 써요.';
+  }
+
+  // ---------- 입장 & 세션 복원 ----------
+  var joinBtn = document.getElementById('btn-join');
+  joinBtn.addEventListener('click', function () { doJoin(false); });
+  ['in-code', 'in-sid', 'in-name'].forEach(function (id) {
+    document.getElementById(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(false); });
+  });
+
+  async function doJoin(silent) {
+    var code = document.getElementById('in-code').value.trim();
+    var sid = document.getElementById('in-sid').value.trim();
+    var name = document.getElementById('in-name').value.trim();
+    var errEl = document.getElementById('join-err');
+    errEl.classList.remove('on');
+    joinBtn.disabled = true;
+    try {
+      var res = await api('joinStudent', code, sid, name);
+      S.sid = sid; S.name = res.me.name || name;
+      try { localStorage.setItem(LS_KEY, JSON.stringify({ code: code, sid: sid, name: name })); } catch (e) {}
+      document.getElementById('s-join').classList.add('hidden');
+      document.getElementById('s-main').classList.remove('hidden');
+      applyState(res);
+      startPolling();
+    } catch (e) {
+      if (!silent) { errEl.textContent = e.message; errEl.classList.add('on'); }
+    } finally { joinBtn.disabled = false; }
+  }
+
+  // 저장된 세션으로 자동 복원
+  (function restore() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+      if (saved && saved.sid) {
+        document.getElementById('in-code').value = saved.code || '';
+        document.getElementById('in-sid').value = saved.sid || '';
+        document.getElementById('in-name').value = saved.name || '';
+        doJoin(true);
+      }
+    } catch (e) {}
+  })();
+
+  // ---------- 폴링 (4초, 변경분만) ----------
+  function startPolling() {
+    if (S.pollId) clearInterval(S.pollId);
+    S.pollId = setInterval(async function () {
+      try {
+        var res = await api('getStudentState', S.sid, S.token);
+        if (res.changed) applyState(res);
+      } catch (e) { /* 일시 오류는 다음 폴링에서 회복 */ }
+    }, 4000);
+  }
+
+  // ---------- 렌더링 ----------
+  var STATUS_DESC = {
+    '대기': '시작을 기다리는 중', '작성': '포스트잇을 붙여 주세요',
+    '시장': '시장이 열렸어요! 짝을 찾아보세요', '성찰': '오늘의 마음을 돌아봐요', '종료': '활동 종료'
+  };
+
+  function applyState(res) {
+    S.token = res.token;
+    S.data = res;
+    document.getElementById('st-chip').textContent = res.status;
+    document.getElementById('st-desc').textContent = STATUS_DESC[res.status] || '';
+    document.getElementById('st-who').textContent = S.name + ' (' + S.sid + ')';
+
+    ['v-wait', 'v-write', 'v-market', 'v-reflect', 'v-end'].forEach(function (id) {
+      document.getElementById(id).classList.add('hidden');
+    });
+    document.getElementById('btn-share').classList.add('hidden');
+
+    if (res.status === '대기') document.getElementById('v-wait').classList.remove('hidden');
+    else if (res.status === '작성') { document.getElementById('v-write').classList.remove('hidden'); renderMyGrid(); }
+    else if (res.status === '시장') {
+      document.getElementById('v-market').classList.remove('hidden');
+      document.getElementById('btn-share').classList.remove('hidden');
+      renderMarket(); renderMyMatches();
+    }
+    else if (res.status === '성찰') {
+      document.getElementById('v-reflect').classList.remove('hidden');
+      document.getElementById('reflect-form').classList.toggle('hidden', res.reflectionDone);
+      document.getElementById('reflect-done').classList.toggle('hidden', !res.reflectionDone);
+    }
+    else if (res.status === '종료') {
+      document.getElementById('v-end').classList.remove('hidden');
+      var mine = res.postits.filter(function (p) { return p.sid === S.sid; });
+      var given = 0, got = 0;
+      mine.forEach(function (p) {
+        var n = p.matchCount || (p.matched ? 1 : 0);
+        if (p.type === '초록') given += n; else got += n;
+      });
+      document.getElementById('end-summary').textContent =
+        '내가 건넨 도움 ' + given + '건, 내가 받은 도움 ' + got + '건. 오늘 나눠줘서 고마워요.';
+    }
+  }
+
+  function postitHtml(p, mineHighlight) {
+    var cls = 'postit ' + (p.type === '초록' ? 'green' : 'yellow') +
+      (p.matched ? ' matched' : '') + (mineHighlight && p.sid === S.sid ? ' mine' : '');
+    var iconD = p.type === '초록' ? IC.give : IC.need;
+    var iconC = p.type === '초록' ? '#3e7d33' : '#8a6d0d';
+    return '<div class="' + cls + '">' +
+      (p.matched ? '<span class="badge">' + svg(IC.link, 10, '#b85c2c') + '나눔 ' + (p.matchCount || 1) + '회</span>' : '') +
+      '<div class="owner">' + svg(iconD, 13, iconC) + esc(p.name) + '</div>' +
+      esc(p.content) + '</div>';
+  }
+
+  function renderMyGrid() {
+    var mine = S.data.postits.filter(function (p) { return p.sid === S.sid; });
+    document.getElementById('my-grid').innerHTML = mine.map(function (p) { return postitHtml(p, false); }).join('') ||
+      '<p class="hint" style="grid-column:1/-1">아직 붙인 포스트잇이 없어요.</p>';
+    var g = mine.filter(function (p) { return p.type === '초록'; }).length;
+    var y = mine.filter(function (p) { return p.type === '노랑'; }).length;
+    document.getElementById('my-count').textContent = ' 초록 ' + g + ' · 노랑 ' + y;
+  }
+
+  function renderMarket() {
+    var list = S.data.postits.filter(function (p) {
+      if (S.filter !== 'all' && p.type !== S.filter) return false;
+      if (S.search && (p.content + p.name).toLowerCase().indexOf(S.search.toLowerCase()) === -1) return false;
+      return true;
+    });
+    document.getElementById('mk-grid').innerHTML = list.map(function (p) { return postitHtml(p, true); }).join('') ||
+      '<p class="hint" style="grid-column:1/-1">조건에 맞는 포스트잇이 없어요.</p>';
+    var total = S.data.postits.length;
+    var matched = S.data.postits.filter(function (p) { return p.matched; }).length;
+    document.getElementById('mk-count').textContent = '전체 ' + total + '장 · 나눔 완료 ' + matched + '장' +
+      (S.data.mode === '짝' ? ' · 짝 모드(내 짝의 포스트잇만 보여요)' : '');
+  }
+
+  function renderMyMatches() {
+    var el = document.getElementById('my-matches');
+    el.innerHTML = (S.data.myMatches || []).map(function (m) {
+      return '<div class="match-item"><b>' + esc(m.otherName) + '</b> 님과 · ' + esc(m.note) + '</div>';
+    }).join('') || '<p class="hint">아직 기록이 없어요. 나눔이 이루어지면 아래 버튼으로 기록해요.</p>';
+  }
+
+  // ---------- 필터/검색 ----------
+  document.querySelectorAll('.filter-bar .f').forEach(function (b) {
+    b.addEventListener('click', function () {
+      S.filter = b.dataset.f;
+      document.querySelectorAll('.filter-bar .f').forEach(function (x) { x.classList.toggle('on', x === b); });
+      renderMarket();
+    });
+  });
+  document.getElementById('mk-search').addEventListener('input', function () {
+    S.search = this.value.trim();
+    renderMarket();
+  });
+
+  // ---------- 포스트잇 작성 (작성 화면 + 시장 화면) ----------
+  function bindTypeToggle(gId, yId, setter) {
+    var g = document.getElementById(gId), y = document.getElementById(yId);
+    g.addEventListener('click', function () { setter('초록'); g.classList.add('on'); y.classList.remove('on'); setHint(); });
+    y.addEventListener('click', function () { setter('노랑'); y.classList.add('on'); g.classList.remove('on'); setHint(); });
+  }
+  bindTypeToggle('tb-green', 'tb-yellow', function (t) { writeType = t; });
+  bindTypeToggle('tb2-green', 'tb2-yellow', function (t) { marketType = t; });
+  setHint();
+
+  async function addPostitFlow(type, inputId, errId, btn) {
+    var input = document.getElementById(inputId);
+    var errEl = document.getElementById(errId);
+    errEl.classList.remove('on');
+    btn.disabled = true;
+    try {
+      await api('addPostit', S.sid, type, input.value);
+      input.value = '';
+      var res = await api('getStudentState', S.sid, '');
+      applyState(res);
+    } catch (e) { errEl.textContent = e.message; errEl.classList.add('on'); }
+    finally { btn.disabled = false; }
+  }
+  document.getElementById('btn-add').addEventListener('click', function () {
+    addPostitFlow(writeType, 'pi-content', 'write-err', this);
+  });
+  document.getElementById('btn-add2').addEventListener('click', function () {
+    addPostitFlow(marketType, 'pi2-content', 'market-err', this);
+  });
+
+  // ---------- 나눔 기록 모달 ----------
+  var modalBg = document.getElementById('modal-bg');
+  document.getElementById('btn-share').addEventListener('click', openShareModal);
+  document.getElementById('btn-modal-close').addEventListener('click', function () { modalBg.classList.remove('on'); });
+  modalBg.addEventListener('click', function (e) { if (e.target === modalBg) modalBg.classList.remove('on'); });
+
+  function openShareModal() {
+    var sel = document.getElementById('sh-partner');
+    sel.innerHTML = '<option value="">상대를 선택하세요</option>' +
+      S.data.partnerList.map(function (s) {
+        return '<option value="' + esc(s.sid) + '">' + esc(s.name) + ' (' + esc(s.sid) + ')</option>';
+      }).join('');
+    document.getElementById('sh-picks').innerHTML = '<p class="hint">먼저 상대를 선택해 주세요.</p>';
+    document.getElementById('sh-note').value = '';
+    document.getElementById('share-err').classList.remove('on');
+    modalBg.classList.add('on');
+  }
+
+  document.getElementById('sh-partner').addEventListener('change', function () {
+    var partner = this.value;
+    var box = document.getElementById('sh-picks');
+    if (!partner) { box.innerHTML = '<p class="hint">먼저 상대를 선택해 주세요.</p>'; return; }
+    // 이미 나눔된 포스트잇도 다른 친구와 반복 나눔 가능 — 미나눔을 위로 정렬
+    var candidates = S.data.postits.filter(function (p) {
+      return p.sid === S.sid || p.sid === partner;
+    }).sort(function (a, b) { return (a.matched ? 1 : 0) - (b.matched ? 1 : 0); });
+    if (!candidates.length) { box.innerHTML = '<p class="hint">기록할 수 있는 포스트잇이 없어요.</p>'; return; }
+    box.innerHTML = candidates.map(function (p) {
+      return '<label class="pick"><input type="checkbox" value="' + esc(p.id) + '">' +
+        '<span><span class="tag ' + (p.type === '초록' ? 'g' : 'y') + '">' + (p.sid === S.sid ? '내 것' : esc(p.name)) + '</span>' +
+        esc(p.content) +
+        (p.matched ? ' <span style="color:var(--muted);font-size:11px">(이미 ' + (p.matchCount || 1) + '회 나눔)</span>' : '') +
+        '</span></label>';
+    }).join('');
+    box.querySelectorAll('.pick input').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        cb.closest('.pick').classList.toggle('on', cb.checked);
+      });
+    });
+  });
+
+  document.getElementById('btn-share-submit').addEventListener('click', async function () {
+    var btn = this;
+    var errEl = document.getElementById('share-err');
+    errEl.classList.remove('on');
+    var partner = document.getElementById('sh-partner').value;
+    var ids = Array.prototype.map.call(document.querySelectorAll('#sh-picks input:checked'), function (cb) { return cb.value; });
+    var note = document.getElementById('sh-note').value.trim();
+    btn.disabled = true;
+    try {
+      if (!partner) throw new Error('상대를 선택해 주세요.');
+      await api('recordShare', S.sid, partner, ids, note);
+      modalBg.classList.remove('on');
+      var res = await api('getStudentState', S.sid, '');
+      applyState(res);
+    } catch (e) { errEl.textContent = e.message; errEl.classList.add('on'); }
+    finally { btn.disabled = false; }
+  });
+
+  // ---------- 성찰 ----------
+  document.getElementById('btn-reflect').addEventListener('click', async function () {
+    var btn = this;
+    var errEl = document.getElementById('reflect-err');
+    errEl.classList.remove('on');
+    btn.disabled = true;
+    try {
+      await api('submitReflection', S.sid,
+        document.getElementById('rf-give').value,
+        document.getElementById('rf-receive').value);
+      var res = await api('getStudentState', S.sid, '');
+      applyState(res);
+    } catch (e) { errEl.textContent = e.message; errEl.classList.add('on'); }
+    finally { btn.disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>

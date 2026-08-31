@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>도움 벼룩시장 — 전광판</title>
+<style>
+  :root {
+    --ink: #4a3f35; --muted: #9a8b7a;
+    --green: #cdeec2; --green-line: #86c97c; --green-dark: #3e7d33;
+    --yellow: #ffe9a8; --yellow-line: #e8c95c; --yellow-dark: #8a6d0d;
+    --accent: #d97742; --accent-dark: #b85c2c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color: var(--ink); overflow: hidden;
+    /* 코르크 보드 질감 */
+    background: #c9a876;
+    background-image: radial-gradient(rgba(255,255,255,.14) 1.5px, transparent 1.5px),
+                      radial-gradient(rgba(90,60,30,.12) 1.5px, transparent 1.5px);
+    background-size: 26px 26px, 34px 34px;
+    background-position: 0 0, 13px 17px;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; padding: 14px 24px;
+    background: rgba(74,54,32,.88); color: #f7ecd9;
+  }
+  header h1 { font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+  .st-chip { background: var(--accent); color: #fff; font-weight: 800; border-radius: 999px; padding: 5px 16px; font-size: 15px; }
+  .goal { font-size: 13px; opacity: .85; }
+  .counter { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
+  .counter b { font-size: 22px; color: #ffd98a; }
+
+  #board { position: relative; width: 100%; height: calc(100% - 62px); }
+
+  .postit {
+    position: absolute; width: 200px; min-height: 96px; padding: 30px 14px 12px;
+    font-size: 14.5px; line-height: 1.45; border-radius: 3px 3px 10px 3px;
+    box-shadow: 3px 5px 12px rgba(60,35,10,.3); word-break: break-word;
+    transition: opacity .5s, transform .5s;
+  }
+  .postit.green { background: var(--green); }
+  .postit.yellow { background: var(--yellow); }
+  .postit::before { /* 핀 */
+    content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #f08a5c, var(--accent-dark));
+    box-shadow: 0 2px 3px rgba(60,30,10,.4);
+  }
+  .postit .owner { position: absolute; top: 8px; left: 12px; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 4px; }
+  .postit.green .owner { color: var(--green-dark); }
+  .postit.yellow .owner { color: var(--yellow-dark); }
+  .postit.matched { opacity: .65; }
+  .postit .badge {
+    position: absolute; right: -8px; top: -8px; background: #fff; border-radius: 999px;
+    padding: 3px 9px; font-size: 10.5px; font-weight: 800; color: var(--accent-dark);
+    box-shadow: 0 2px 5px rgba(60,30,10,.3); display: flex; align-items: center; gap: 3px;
+  }
+  .postit.enter { animation: drop .6s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes drop {
+    from { opacity: 0; transform: translateY(-40px) scale(1.15) rotate(0deg) !important; }
+  }
+
+  /* 스포트라이트 */
+  #spot-bg {
+    position: fixed; inset: 0; background: rgba(40,25,10,.72); z-index: 30;
+    display: none; align-items: center; justify-content: center; flex-direction: column; gap: 22px;
+  }
+  #spot-bg.on { display: flex; }
+  .spot-title { color: #ffd98a; font-size: 30px; font-weight: 800; letter-spacing: 2px; display: flex; align-items: center; gap: 12px; }
+  .spot-card {
+    width: min(560px, 86vw); padding: 60px 36px 36px; font-size: 30px; line-height: 1.5; font-weight: 700;
+    border-radius: 6px 6px 20px 6px; box-shadow: 0 14px 50px rgba(0,0,0,.5); position: relative;
+    animation: spotIn .5s cubic-bezier(.3,1.4,.5,1);
+  }
+  .spot-card.green { background: var(--green); }
+  .spot-card.yellow { background: var(--yellow); }
+  .spot-card::before { content: ''; position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 20px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #f08a5c, var(--accent-dark)); box-shadow: 0 3px 6px rgba(0,0,0,.4); }
+  .spot-card .owner { position: absolute; top: 18px; left: 22px; font-size: 17px; font-weight: 800; }
+  .spot-card.green .owner { color: var(--green-dark); }
+  .spot-card.yellow .owner { color: var(--yellow-dark); }
+  @keyframes spotIn { from { opacity: 0; transform: scale(.6) rotate(-4deg); } }
+
+  .empty-msg {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(255,253,245,.92); border-radius: 16px; padding: 30px 44px;
+    text-align: center; font-size: 19px; font-weight: 700; color: var(--muted); line-height: 1.7;
+    box-shadow: 0 6px 20px rgba(60,35,10,.25);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><span id="icon-basket"></span>도움 벼룩시장</h1>
+  <span class="st-chip" id="st-chip">대기</span>
+  <span class="goal">받는 행복과 주는 행복, 오늘 둘 다 느껴보는 게 목표입니다.</span>
+  <div class="counter">
+    <span>포스트잇 <b id="c-total">0</b></span>
+    <span>나눔 완료 <b id="c-matched">0</b></span>
+  </div>
+</header>
+<div id="board"></div>
+
+<div id="spot-bg">
+  <div class="spot-title"><span id="icon-mega"></span>주인을 찾습니다</div>
+  <div class="spot-card green" id="spot-card"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API = new URLSearchParams(location.search).get('api');
+  function apiUrl() {
+    if (!API) return null;
+    return /^https?:\/\//i.test(API) ? API : 'https://script.google.com/macros/s/' + API.trim() + '/exec';
+  }
+  function call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      return new Promise(function (res, rej) {
+        var r = google.script.run.withSuccessHandler(res).withFailureHandler(function (e) {
+          rej(new Error((e && e.message) || '서버 연결 오류'));
+        });
+        r[fn].apply(r, args);
+      });
+    }
+    var u = apiUrl();
+    if (u) {
+      return fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: fn, args: args }) })
+        .then(function (r) { if (!r.ok) throw new Error('서버 연결 오류 (' + r.status + ')'); return r.json(); });
+    }
+    return Promise.reject(new Error('접속 주소가 완전하지 않습니다.'));
+  }
+
+  function svg(d, size, color) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="' + d + '" stroke="' + color + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  var IC = {
+    basket: 'M4 10 H20 L18 20 H6 Z M8 10 L12 4 L16 10 M9.5 14 V16.5 M14.5 14 V16.5',
+    give: 'M12 20 C7 16 4 13 4 9.5 C4 7 6 5 8.5 5 C10 5 11.3 5.8 12 7 C12.7 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 13 17 16 12 20 Z',
+    need: 'M12 3 V13 M12 13 L8 9.5 M12 13 L16 9.5 M5 16 V19 H19 V16',
+    link: 'M9 14 L15 8 M8 11 L6.5 12.5 a3.5 3.5 0 0 0 5 5 L13 16 M16 13 L17.5 11.5 a3.5 3.5 0 0 0 -5 -5 L11 8',
+    mega: 'M3 11 V15 L7 15 L14 20 V6 L7 11 Z M17 9 A5 5 0 0 1 17 17'
+  };
+  document.getElementById('icon-basket').innerHTML = svg(IC.basket, 26, '#ffd98a');
+  document.getElementById('icon-mega').innerHTML = svg(IC.mega, 30, '#ffd98a');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /** id 해시 → 고정 위치·기울기 (폴링마다 위치가 안 흔들리게) */
+  function hashPos(id) {
+    var h = 0;
+    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return {
+      x: 3 + (h % 1000) / 1000 * 78,             // 3% ~ 81%
+      y: 4 + ((h >> 10) % 1000) / 1000 * 68,     // 4% ~ 72%
+      rot: -6 + ((h >> 20) % 120) / 10           // -6deg ~ +6deg
+    };
+  }
+
+  var token = '';
+  var known = {}; // id → true (새 포스트잇 애니메이션 판별)
+  var first = true;
+
+  function render(data) {
+    document.getElementById('st-chip').textContent = data.status;
+    document.getElementById('c-total').textContent = data.counts.total;
+    document.getElementById('c-matched').textContent = data.counts.matched;
+
+    var board = document.getElementById('board');
+    if (!data.postits.length) {
+      board.innerHTML = '<div class="empty-msg">아직 붙은 포스트잇이 없어요.<br>여러분의 첫 포스트잇을 기다립니다.</div>';
+      known = {};
+    } else {
+      board.innerHTML = data.postits.map(function (p) {
+        var pos = hashPos(p.id);
+        var isNew = !first && !known[p.id];
+        var iconD = p.type === '초록' ? IC.give : IC.need;
+        var iconC = p.type === '초록' ? '#3e7d33' : '#8a6d0d';
+        return '<div class="postit ' + (p.type === '초록' ? 'green' : 'yellow') +
+          (p.matched ? ' matched' : '') + (isNew ? ' enter' : '') + '"' +
+          ' style="left:' + pos.x + '%;top:' + pos.y + '%;transform:rotate(' + pos.rot + 'deg)">' +
+          (p.matched ? '<span class="badge">' + svg(IC.link, 10, '#b85c2c') + ' 나눔 ' + (p.matchCount || 1) + '회</span>' : '') +
+          '<span class="owner">' + svg(iconD, 13, iconC) + esc(p.name) + '</span>' +
+          esc(p.content) + '</div>';
+      }).join('');
+      data.postits.forEach(function (p) { known[p.id] = true; });
+    }
+    first = false;
+
+    // 스포트라이트
+    var spotBg = document.getElementById('spot-bg');
+    var spot = data.postits.filter(function (p) { return p.id === data.spotlightId; })[0];
+    if (spot) {
+      var card = document.getElementById('spot-card');
+      card.className = 'spot-card ' + (spot.type === '초록' ? 'green' : 'yellow');
+      card.innerHTML = '<span class="owner">' + esc(spot.name) + '</span>' + esc(spot.content);
+      spotBg.classList.add('on');
+    } else {
+      spotBg.classList.remove('on');
+    }
+  }
+
+  async function poll() {
+    try {
+      var res = await call('getBoardState', token);
+      if (res && res.ok && res.changed) { token = res.token; render(res); }
+      else if (res && res.ok === false) throw new Error(res.error);
+    } catch (e) {
+      if (first) {
+        document.getElementById('board').innerHTML =
+          '<div class="empty-msg">' + esc(e.message) + '</div>';
+      }
+    }
+  }
+
+  poll();
+  setInterval(poll, 4000);
+})();
+</script>
+</body>
+</html>
