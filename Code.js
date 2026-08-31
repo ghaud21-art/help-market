@@ -31,6 +31,7 @@ function doPost(e) {
       addPostit: addPostit, recordShare: recordShare, submitReflection: submitReflection,
       getBoardState: getBoardState,
       teacherLogin: teacherLogin, getTeacherState: getTeacherState,
+      teacherCreateSession: teacherCreateSession, teacherDeleteSession: teacherDeleteSession,
       teacherSetStatus: teacherSetStatus, teacherSetMode: teacherSetMode,
       teacherShufflePairs: teacherShufflePairs, teacherSpotlight: teacherSpotlight,
       teacherHidePostit: teacherHidePostit
@@ -52,11 +53,10 @@ function onOpen() {
     .addItem('① DB 초기화 (최초 1회)', 'menuSetup')
     .addItem('② 웹앱 배포 방법 안내', 'menuDeployHelp')
     .addItem('③ 링크 만들기', 'menuMakeLinks')
-    .addItem('④ 반 코드 재설정', 'menuResetCode')
     .addSeparator()
     .addItem('테스트 데이터 생성 (시연용)', 'menuSeed')
     .addItem('테스트 데이터 삭제', 'menuSeedDelete')
-    .addItem('활동 데이터 전체 삭제 (다음 반 준비)', 'menuResetActivity')
+    .addItem('전체 활동 데이터 삭제 (모든 반)', 'menuResetActivity')
     .addToUi();
 }
 
@@ -64,8 +64,9 @@ function menuSetup() {
   setupDatabase();
   SpreadsheetApp.getUi().alert('🧺 DB 초기화 완료!',
     '시트 탭과 기본 설정이 준비되었습니다.\n' +
-    '반 코드: ' + getSetting_('반코드') + ' (학생 입장용)\n' +
     '교사 코드: ' + getSetting_('교사코드') + ' (교사 화면 입장용 — 학생에게 비공개)\n\n' +
+    '반 코드는 교사 화면에서 [새 반 만들기]를 하면 반마다 발급됩니다.\n' +
+    '여러 반을 동시에 운영해도 데이터가 반별로 완전히 분리돼요.\n\n' +
     '이어서 [② 웹앱 배포 방법 안내]를 진행하세요.',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
@@ -97,9 +98,9 @@ function menuMakeLinks() {
 
   var html = HtmlService.createHtmlOutput(
     '<div style="font-family:sans-serif;padding:8px 4px">' +
-    '<p style="margin:0 0 6px"><b>학생용 링크</b> (반 코드 ' + getSetting_('반코드') + ' 와 함께 공유)</p>' +
+    '<p style="margin:0 0 6px"><b>학생용 링크</b> (반 코드는 교사 화면에서 반을 만들면 발급됩니다)</p>' +
     '<input style="width:100%;padding:8px;font-size:12px" value="' + url + '" onclick="this.select()" readonly>' +
-    '<p style="margin:14px 0 6px"><b>전광판</b> (빔프로젝터에 띄우기)</p>' +
+    '<p style="margin:14px 0 6px"><b>전광판</b> (빔프로젝터에 띄우고 반 코드 입력)</p>' +
     '<input style="width:100%;padding:8px;font-size:12px" value="' + url + '?view=board" onclick="this.select()" readonly>' +
     '<p style="margin:14px 0 6px"><b>교사 화면</b> (교사 코드 ' + getSetting_('교사코드') + ' 로 입장)</p>' +
     '<input style="width:100%;padding:8px;font-size:12px" value="' + url + '?view=teacher" onclick="this.select()" readonly>' +
@@ -109,20 +110,13 @@ function menuMakeLinks() {
   ui.showModalDialog(html, '완성 링크');
 }
 
-function menuResetCode() {
-  var ui = SpreadsheetApp.getUi();
-  var code = String(Math.floor(1000 + Math.random() * 9000));
-  setSetting_('반코드', code);
-  touch_();
-  ui.alert('반 코드가 재설정되었습니다: ' + code);
-}
-
 function menuSeed() {
   var r = seedTestData_();
   SpreadsheetApp.getUi().alert('테스트 데이터 생성 완료',
+    '반: ' + r.session_name + ' (반 코드 ' + r.code + ')\n' +
     '가상 학생: ' + r.students.join(', ') + '\n' +
     '포스트잇 ' + r.postits + '개 (매칭 1건 포함)\n\n' +
-    '전광판·교사 화면에서 바로 확인할 수 있습니다.\n확인 후 [테스트 데이터 삭제]로 정리하세요.',
+    '전광판에 반 코드 ' + r.code + '를 입력하면 바로 볼 수 있습니다.\n확인 후 [테스트 데이터 삭제]로 정리하세요.',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
@@ -131,19 +125,17 @@ function menuSeedDelete() {
   SpreadsheetApp.getUi().alert(n > 0 ? '테스트 데이터를 삭제했습니다.' : '삭제할 테스트 데이터가 없습니다.');
 }
 
-/** 다음 반 수업 준비: 학생·포스트잇·매칭·성찰 전부 비우기 (설정은 유지) */
+/** 모든 반의 활동 데이터 삭제 (학기 정리용) — 반별 삭제는 교사 화면에서 */
 function menuResetActivity() {
   var ui = SpreadsheetApp.getUi();
-  var res = ui.alert('활동 데이터 전체 삭제',
-    '학생·포스트잇·매칭기록·성찰 데이터를 모두 삭제하고 상태를 [대기]로 되돌립니다.\n계속할까요?',
+  var res = ui.alert('전체 활동 데이터 삭제',
+    '모든 반과 학생·포스트잇·매칭기록·성찰 데이터를 삭제합니다.\n' +
+    '(반 하나만 지우려면 교사 화면의 반 [삭제] 버튼을 쓰세요)\n계속할까요?',
     ui.ButtonSet.YES_NO);
   if (res !== ui.Button.YES) return;
-  ['학생', '포스트잇', '매칭기록', '성찰'].forEach(function (name) {
+  ['반', '학생', '포스트잇', '매칭기록', '성찰'].forEach(function (name) {
     deleteRowsWhere_(name, function () { return true; });
   });
-  setSetting_('상태', '대기');
-  setSetting_('모드', '자유');
-  setSetting_('스포트라이트', '');
   touch_();
-  ui.alert('초기화되었습니다. 새 활동을 시작할 수 있어요.');
+  ui.alert('초기화되었습니다. 교사 화면에서 새 반을 만들어 시작하세요.');
 }

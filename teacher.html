@@ -93,10 +93,24 @@
     <header class="top">
       <h1><span id="icon-basket"></span>도움 벼룩시장</h1>
       <span class="role">교사용</span>
-      <span class="code-chip">학생 입장 반 코드 <b id="class-code">----</b></span>
+      <span class="code-chip">선택한 반 코드 <b id="class-code">----</b></span>
       <button class="btn sub sm" id="btn-logout">나가기</button>
     </header>
 
+    <div class="card">
+      <p class="sec-title">반 관리 — 반마다 코드·진행 단계·포스트잇이 완전히 분리됩니다</p>
+      <div class="row">
+        <input class="txt" id="in-sess-name" placeholder="예: 2-3반 4교시" style="flex:1;min-width:180px">
+        <button class="btn" id="btn-sess-create">새 반 만들기</button>
+      </div>
+      <div id="sess-list" style="margin-top:10px"></div>
+    </div>
+
+    <div id="no-session" class="card" style="text-align:center;color:var(--muted);font-size:14px;padding:36px 20px">
+      위에서 반을 만들거나 선택하면 진행 컨트롤이 표시됩니다.
+    </div>
+
+    <div id="panel" class="hidden">
     <div class="card">
       <p class="sec-title">활동 단계 — 누르면 그 단계로 이동합니다</p>
       <div class="stepper" id="stepper"></div>
@@ -139,8 +153,9 @@
 
     <div class="card">
       <p class="sec-title">결과 확인</p>
-      <p class="hint">종료 후 학생별 준 도움/받은 도움/성찰은 이 스프레드시트의 <b>포스트잇 · 매칭기록 · 성찰</b> 탭에 그대로 정리되어 있습니다. 다음 반 수업 전에는 시트 메뉴 [활동 데이터 전체 삭제]를 사용하세요.</p>
+      <p class="hint">종료 후 학생별 준 도움/받은 도움/성찰은 이 스프레드시트의 <b>포스트잇 · 매칭기록 · 성찰</b> 탭에 반별(session_id)로 정리되어 있습니다. 다음 반 수업은 [새 반 만들기]로 시작하면 데이터가 섞이지 않아요.</p>
     </div>
+    </div><!-- /#panel -->
   </section>
 </div>
 
@@ -191,6 +206,7 @@
   var token = '';
   var data = null;
   var pollId = null;
+  var selectedId = '';
   var STATUSES = ['대기', '작성', '시장', '성찰', '종료'];
   var STEP_DESC = { '대기': '입장만 허용', '작성': '포스트잇 붙이기', '시장': '시장 열림 + 나눔', '성찰': '두 질문 답하기', '종료': '활동 마무리' };
 
@@ -204,7 +220,8 @@
     KEY = key;
     var res = await api('teacherLogin', key);
     sessionStorage.setItem('hm_tkey', key);
-    document.getElementById('class-code').textContent = res.classCode;
+    // 반이 하나뿐이면 자동 선택
+    if (!selectedId && res.sessions.length === 1) selectedId = res.sessions[0].session_id;
     show(true);
     await refresh(true);
     if (pollId) clearInterval(pollId);
@@ -231,28 +248,88 @@
   // ---------- 폴링 ----------
   async function refresh(force) {
     try {
-      var res = await api('getTeacherState', KEY, force ? '' : token);
+      var res = await api('getTeacherState', KEY, selectedId, force ? '' : token);
       if (res.changed) { token = res.token; data = res; render(); }
     } catch (e) { /* 다음 폴링에서 회복 */ }
   }
 
+  // ---------- 반 관리 ----------
+  document.getElementById('btn-sess-create').addEventListener('click', async function () {
+    var input = document.getElementById('in-sess-name');
+    var name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    this.disabled = true;
+    try {
+      var res = await api('teacherCreateSession', KEY, name);
+      input.value = '';
+      selectedId = res.session.session_id;
+      await refresh(true);
+    } catch (e) { alert(e.message); }
+    finally { this.disabled = false; }
+  });
+
+  function renderSessions() {
+    var el = document.getElementById('sess-list');
+    var sessions = data.sessions || [];
+    if (!sessions.length) {
+      el.innerHTML = '<p class="hint">아직 반이 없어요. 반 이름을 입력하고 [새 반 만들기]를 눌러 주세요.</p>';
+      return;
+    }
+    el.innerHTML = sessions.map(function (s) {
+      var sel = s.session_id === selectedId;
+      return '<div class="p-item' + (sel ? ' spot' : '') + '" data-id="' + esc(s.session_id) + '" style="cursor:pointer;align-items:center">' +
+        '<span class="body"><b style="font-size:14px">' + esc(s.name) + '</b>' +
+        ' <span style="font-size:16px;font-weight:900;color:var(--accent-dark);letter-spacing:2px;margin-left:6px">' + esc(s.code) + '</span>' +
+        '<small>' + esc(s.status) + ' 단계 · ' + esc(s.mode) + ' 모드</small></span>' +
+        '<span class="acts">' +
+        (sel ? '<span class="tag g" style="align-self:center">선택됨</span>' : '<button type="button" class="btn sub sm act-sel">선택</button>') +
+        '<button type="button" class="btn warn sm act-del">삭제</button>' +
+        '</span></div>';
+    }).join('');
+    el.querySelectorAll('.p-item').forEach(function (item) {
+      var id = item.dataset.id;
+      item.addEventListener('click', function (e) {
+        if (e.target.tagName === 'BUTTON') return;
+        selectedId = id; refresh(true);
+      });
+      var selBtn = item.querySelector('.act-sel');
+      if (selBtn) selBtn.addEventListener('click', function () { selectedId = id; refresh(true); });
+      item.querySelector('.act-del').addEventListener('click', async function () {
+        var s = sessions.filter(function (x) { return x.session_id === id; })[0];
+        if (!confirm('"' + s.name + '" 반과 그 반의 모든 기록을 삭제할까요?\n되돌릴 수 없습니다.')) return;
+        try {
+          await api('teacherDeleteSession', KEY, id);
+          if (selectedId === id) selectedId = '';
+          await refresh(true);
+        } catch (e2) { alert(e2.message); }
+      });
+    });
+  }
+
   // ---------- 렌더링 ----------
   function render() {
+    renderSessions();
+    var has = !!data.session;
+    document.getElementById('no-session').classList.toggle('hidden', has);
+    document.getElementById('panel').classList.toggle('hidden', !has);
+    document.getElementById('class-code').textContent = has ? data.session.code : '----';
+    if (!has) return;
+
     // 상태 스테퍼
-    var curIdx = STATUSES.indexOf(data.status);
+    var curIdx = STATUSES.indexOf(data.session.status);
     document.getElementById('stepper').innerHTML = STATUSES.map(function (s, i) {
       var cls = 'step' + (i === curIdx ? ' on' : (i < curIdx ? ' done' : ''));
       return '<button type="button" class="' + cls + '" data-s="' + s + '">' + s + '<small>' + STEP_DESC[s] + '</small></button>';
     }).join('');
     document.querySelectorAll('#stepper .step').forEach(function (b) {
       b.addEventListener('click', async function () {
-        try { await api('teacherSetStatus', KEY, b.dataset.s); await refresh(true); }
+        try { await api('teacherSetStatus', KEY, selectedId, b.dataset.s); await refresh(true); }
         catch (e) { alert(e.message); }
       });
     });
 
     // 모드
-    var isPair = data.mode === '짝';
+    var isPair = data.session.mode === '짝';
     document.getElementById('mode-free').classList.toggle('on', !isPair);
     document.getElementById('mode-pair').classList.toggle('on', isPair);
     document.getElementById('btn-shuffle').classList.toggle('hidden', !isPair);
@@ -277,7 +354,6 @@
     }
 
     // 현황
-    document.getElementById('class-code').textContent = data.classCode;
     document.getElementById('c-students').textContent = data.counts.students;
     document.getElementById('c-total').textContent = data.counts.total;
     document.getElementById('c-matched').textContent = data.counts.matched;
@@ -316,7 +392,7 @@
   function bindItemButtons() {
     document.querySelectorAll('.act-spot').forEach(function (b) {
       b.addEventListener('click', async function () {
-        try { await api('teacherSpotlight', KEY, b.dataset.id); await refresh(true); }
+        try { await api('teacherSpotlight', KEY, selectedId, b.dataset.id); await refresh(true); }
         catch (e) { alert(e.message); }
       });
     });
@@ -336,16 +412,16 @@
 
   // ---------- 모드/스포트라이트 컨트롤 ----------
   document.getElementById('mode-free').addEventListener('click', async function () {
-    try { await api('teacherSetMode', KEY, '자유'); await refresh(true); } catch (e) { alert(e.message); }
+    try { await api('teacherSetMode', KEY, selectedId, '자유'); await refresh(true); } catch (e) { alert(e.message); }
   });
   document.getElementById('mode-pair').addEventListener('click', async function () {
-    try { await api('teacherSetMode', KEY, '짝'); await refresh(true); } catch (e) { alert(e.message); }
+    try { await api('teacherSetMode', KEY, selectedId, '짝'); await refresh(true); } catch (e) { alert(e.message); }
   });
   document.getElementById('btn-shuffle').addEventListener('click', async function () {
-    try { await api('teacherShufflePairs', KEY); await refresh(true); } catch (e) { alert(e.message); }
+    try { await api('teacherShufflePairs', KEY, selectedId); await refresh(true); } catch (e) { alert(e.message); }
   });
   document.getElementById('btn-spot-off').addEventListener('click', async function () {
-    try { await api('teacherSpotlight', KEY, ''); await refresh(true); } catch (e) { alert(e.message); }
+    try { await api('teacherSpotlight', KEY, selectedId, ''); await refresh(true); } catch (e) { alert(e.message); }
   });
 })();
 </script>

@@ -94,7 +94,7 @@
 </head>
 <body>
 <header>
-  <h1><span id="icon-basket"></span>도움 벼룩시장</h1>
+  <h1><span id="icon-basket"></span>도움 벼룩시장 <span id="sess-name" style="font-size:15px;font-weight:700;opacity:.85"></span></h1>
   <span class="st-chip" id="st-chip">대기</span>
   <span class="goal">받는 행복과 주는 행복, 오늘 둘 다 느껴보는 게 목표입니다.</span>
   <div class="counter">
@@ -103,6 +103,17 @@
   </div>
 </header>
 <div id="board"></div>
+
+<!-- 반 코드 입력 (최초 1회, localStorage 저장) -->
+<div id="code-entry" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(40,25,10,.6);align-items:center;justify-content:center">
+  <div style="background:#fffdf8;border-radius:18px;padding:34px 40px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.4)">
+    <p style="font-size:19px;font-weight:800;color:#b85c2c;margin-bottom:6px">어느 반의 전광판인가요?</p>
+    <p style="font-size:13px;color:#8a7c6d;margin-bottom:16px">교사 화면에서 발급된 4자리 반 코드를 입력하세요.</p>
+    <input id="code-input" inputmode="numeric" maxlength="4" style="width:180px;padding:14px;font-size:26px;text-align:center;letter-spacing:8px;border:2px solid #e8ddcc;border-radius:12px;font-family:inherit">
+    <button id="code-btn" style="display:block;width:100%;margin-top:14px;padding:13px;font-size:15px;font-weight:800;font-family:inherit;color:#fff;background:#d97742;border:none;border-radius:12px;cursor:pointer">전광판 열기</button>
+    <p id="code-err" style="display:none;margin-top:10px;color:#a83c22;font-size:13px"></p>
+  </div>
+</div>
 
 <div id="spot-bg">
   <div class="spot-title"><span id="icon-mega"></span>주인을 찾습니다</div>
@@ -169,8 +180,33 @@
   var known = {}; // id → true (새 포스트잇 애니메이션 판별)
   var first = true;
 
+  // 반 코드: ?code= 파라미터 → localStorage → 입력 화면
+  var CODE = new URLSearchParams(location.search).get('code') || '';
+  try { if (!CODE) CODE = localStorage.getItem('hm_board_code') || ''; } catch (e) {}
+
+  var entryEl = document.getElementById('code-entry');
+  function showEntry(msg) {
+    entryEl.style.display = 'flex';
+    var errEl = document.getElementById('code-err');
+    if (msg) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    document.getElementById('code-input').focus();
+  }
+  document.getElementById('code-btn').addEventListener('click', function () {
+    var v = document.getElementById('code-input').value.trim();
+    if (!v) return;
+    CODE = v;
+    try { localStorage.setItem('hm_board_code', v); } catch (e) {}
+    entryEl.style.display = 'none';
+    token = ''; first = true;
+    poll();
+  });
+  document.getElementById('code-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') document.getElementById('code-btn').click();
+  });
+
   function render(data) {
     document.getElementById('st-chip').textContent = data.status;
+    document.getElementById('sess-name').textContent = data.session_name ? '— ' + data.session_name : '';
     document.getElementById('c-total').textContent = data.counts.total;
     document.getElementById('c-matched').textContent = data.counts.matched;
 
@@ -209,11 +245,13 @@
   }
 
   async function poll() {
+    if (!CODE) { showEntry(); return; }
     try {
-      var res = await call('getBoardState', token);
+      var res = await call('getBoardState', CODE, token);
       if (res && res.ok && res.changed) { token = res.token; render(res); }
       else if (res && res.ok === false) throw new Error(res.error);
     } catch (e) {
+      if (/반 코드/.test(e.message)) { CODE = ''; showEntry(e.message); return; }
       if (first) {
         document.getElementById('board').innerHTML =
           '<div class="empty-msg">' + esc(e.message) + '</div>';

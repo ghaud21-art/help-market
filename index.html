@@ -306,7 +306,7 @@
   }
 
   // ---------- 상태 ----------
-  var S = { sid: '', name: '', token: '', data: null, filter: 'all', search: '', pollId: null };
+  var S = { sessionId: '', sessionName: '', sid: '', name: '', token: '', data: null, filter: 'all', search: '', pollId: null };
   var LS_KEY = 'hm_session';
 
   var PLACEHOLDERS_G = ['수학 문제 풀이 차근차근 설명해줄 수 있어요', '필기 노트 빌려줄 수 있어요', '축구 리프팅 알려줄 수 있어요', '그림 그리는 법 알려줄 수 있어요'];
@@ -338,6 +338,7 @@
     try {
       var res = await api('joinStudent', code, sid, name);
       S.sid = sid; S.name = res.me.name || name;
+      S.sessionId = res.session_id; S.sessionName = res.session_name;
       try { localStorage.setItem(LS_KEY, JSON.stringify({ code: code, sid: sid, name: name })); } catch (e) {}
       document.getElementById('s-join').classList.add('hidden');
       document.getElementById('s-main').classList.remove('hidden');
@@ -366,7 +367,7 @@
     if (S.pollId) clearInterval(S.pollId);
     S.pollId = setInterval(async function () {
       try {
-        var res = await api('getStudentState', S.sid, S.token);
+        var res = await api('getStudentState', S.sessionId, S.sid,S.token);
         if (res.changed) applyState(res);
       } catch (e) { /* 일시 오류는 다음 폴링에서 회복 */ }
     }, 4000);
@@ -382,7 +383,10 @@
     S.token = res.token;
     S.data = res;
     document.getElementById('st-chip').textContent = res.status;
-    document.getElementById('st-desc').textContent = STATUS_DESC[res.status] || '';
+    S.sessionId = res.session_id || S.sessionId;
+    S.sessionName = res.session_name || S.sessionName;
+    document.getElementById('st-desc').textContent =
+      (S.sessionName ? S.sessionName + ' · ' : '') + (STATUS_DESC[res.status] || '');
     document.getElementById('st-who').textContent = S.name + ' (' + S.sid + ')';
 
     ['v-wait', 'v-write', 'v-market', 'v-reflect', 'v-end'].forEach(function (id) {
@@ -485,9 +489,9 @@
     errEl.classList.remove('on');
     btn.disabled = true;
     try {
-      await api('addPostit', S.sid, type, input.value);
+      await api('addPostit', S.sessionId, S.sid, type, input.value);
       input.value = '';
-      var res = await api('getStudentState', S.sid, '');
+      var res = await api('getStudentState', S.sessionId, S.sid,'');
       applyState(res);
     } catch (e) { errEl.textContent = e.message; errEl.classList.add('on'); }
     finally { btn.disabled = false; }
@@ -550,9 +554,9 @@
     btn.disabled = true;
     try {
       if (!partner) throw new Error('상대를 선택해 주세요.');
-      await api('recordShare', S.sid, partner, ids, note);
+      await api('recordShare', S.sessionId, S.sid, partner, ids, note);
       modalBg.classList.remove('on');
-      var res = await api('getStudentState', S.sid, '');
+      var res = await api('getStudentState', S.sessionId, S.sid,'');
       applyState(res);
     } catch (e) { errEl.textContent = e.message; errEl.classList.add('on'); }
     finally { btn.disabled = false; }
@@ -565,10 +569,10 @@
     errEl.classList.remove('on');
     btn.disabled = true;
     try {
-      await api('submitReflection', S.sid,
+      await api('submitReflection', S.sessionId, S.sid,
         document.getElementById('rf-give').value,
         document.getElementById('rf-receive').value);
-      var res = await api('getStudentState', S.sid, '');
+      var res = await api('getStudentState', S.sessionId, S.sid,'');
       applyState(res);
     } catch (e) { errEl.textContent = e.message; errEl.classList.add('on'); }
     finally { btn.disabled = false; }
