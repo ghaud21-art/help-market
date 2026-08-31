@@ -53,6 +53,7 @@ function onOpen() {
     .addItem('① DB 초기화 (최초 1회)', 'menuSetup')
     .addItem('② 웹앱 배포 방법 안내', 'menuDeployHelp')
     .addItem('③ 링크 만들기', 'menuMakeLinks')
+    .addItem('④ 교사 코드 재설정', 'menuResetTeacherCode')
     .addSeparator()
     .addItem('테스트 데이터 생성 (시연용)', 'menuSeed')
     .addItem('테스트 데이터 삭제', 'menuSeedDelete')
@@ -108,6 +109,15 @@ function menuMakeLinks() {
     '</div>'
   ).setWidth(560).setHeight(330);
   ui.showModalDialog(html, '완성 링크');
+}
+
+/** 사본을 받은 교사는 반드시 실행 — 원본의 교사 코드가 사본에 그대로 복사되기 때문 */
+function menuResetTeacherCode() {
+  var code = String(Math.floor(100000 + Math.random() * 900000));
+  setSetting_('교사코드', code);
+  touch_();
+  SpreadsheetApp.getUi().alert('교사 코드가 재설정되었습니다: ' + code +
+    '\n(설정 시트에서 언제든 확인할 수 있어요. 교사 화면은 다시 로그인해야 합니다.)');
 }
 
 function menuSeed() {

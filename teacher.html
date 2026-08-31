@@ -6,72 +6,76 @@
 <title>도움 벼룩시장 — 교사</title>
 <style>
   :root {
-    --bg: #f7f1e8; --card: #fffdf8; --ink: #4a3f35; --muted: #8a7c6d; --line: #e8ddcc;
-    --green: #cdeec2; --green-line: #86c97c; --green-dark: #3e7d33;
-    --yellow: #ffe9a8; --yellow-line: #e8c95c; --yellow-dark: #8a6d0d;
-    --accent: #d97742; --accent-dark: #b85c2c;
+    --bg: #f1ead6; --card: #fffcf3; --ink: #201b13; --muted: #746b58; --border: #201b13; --line: #201b13;
+    --green: #bfe793; --green-dark: #23511c;
+    --yellow: #ffdd6b; --yellow-dark: #6b4e05;
+    --accent: #e2793f; --accent-dark: #b85c2c; --accent2: #f0c23c;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: var(--bg); color: var(--ink); }
+  body { font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: var(--bg); color: var(--ink); }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 18px 18px 60px; }
   .hidden { display: none !important; }
 
-  header.top { display: flex; align-items: center; gap: 10px; padding: 4px 0 14px; flex-wrap: wrap; }
-  header.top h1 { font-size: 20px; font-weight: 800; color: var(--accent-dark); display: flex; align-items: center; gap: 8px; }
-  .role { font-size: 12px; background: #fbe9dd; color: var(--accent-dark); font-weight: 800; border-radius: 999px; padding: 4px 12px; }
-  .code-chip { margin-left: auto; font-size: 13px; color: var(--muted); }
+  header.top { display: flex; align-items: center; gap: 10px; padding: 10px 16px; margin: 4px 0 16px; flex-wrap: wrap;
+    background: var(--card); border: 2.5px solid var(--border); border-radius: 14px; box-shadow: 4px 4px 0 var(--border); }
+  header.top h1 { font-size: 18px; font-weight: 900; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .icon-badge { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); border: 2.5px solid var(--border); display: flex; align-items: center; justify-content: center; }
+  .role { font-size: 12px; background: var(--accent2); color: var(--ink); font-weight: 900; border: 2px solid var(--border); border-radius: 999px; padding: 4px 12px; }
+  .code-chip { margin-left: auto; font-size: 13px; color: var(--muted); font-weight: 700; }
   .code-chip b { font-size: 18px; color: var(--accent-dark); letter-spacing: 2px; }
 
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; box-shadow: 0 3px 10px rgba(120,90,50,.06); margin-top: 14px; }
-  .sec-title { font-size: 13px; font-weight: 800; color: var(--accent-dark); margin-bottom: 10px; }
-  .btn { padding: 10px 16px; font-size: 13.5px; font-weight: 800; font-family: inherit; color: #fff; background: var(--accent); border: none; border-radius: 10px; cursor: pointer; }
+  .card { background: var(--card); border: 2.5px solid var(--border); border-radius: 16px; padding: 16px 18px; box-shadow: 5px 5px 0 var(--border); margin-top: 16px; }
+  .sec-title { font-size: 13px; font-weight: 900; color: var(--ink); margin-bottom: 10px; }
+  .btn { padding: 10px 16px; font-size: 13.5px; font-weight: 900; font-family: inherit; color: var(--ink); background: var(--accent);
+    border: 2.5px solid var(--border); border-radius: 10px; cursor: pointer; box-shadow: 3px 3px 0 var(--border); transition: transform .08s, box-shadow .08s; }
+  .btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border); }
   .btn:disabled { opacity: .4; cursor: default; }
-  .btn.sub { background: #efe6d7; color: var(--ink); }
-  .btn.sm { padding: 6px 11px; font-size: 12px; border-radius: 8px; }
-  .btn.warn { background: #fbe9e5; color: #a83c22; }
-  input.txt { padding: 11px 13px; font-size: 15px; font-family: inherit; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; }
-  input.txt:focus { outline: none; border-color: var(--accent); }
-  .err { display: none; margin-top: 10px; padding: 10px 13px; border-radius: 9px; background: #fbe9e5; color: #a83c22; font-size: 13px; }
+  .btn.sub { background: #fff; color: var(--ink); }
+  .btn.sm { padding: 6px 11px; font-size: 12px; border-radius: 8px; box-shadow: 2px 2px 0 var(--border); }
+  .btn.warn { background: #ffd9d0; color: #7a2510; }
+  input.txt { padding: 11px 13px; font-size: 15px; font-family: inherit; font-weight: 600; border: 2.5px solid var(--border); border-radius: 10px; background: #fff; }
+  input.txt:focus { outline: none; box-shadow: 3px 3px 0 var(--border); }
+  .err { display: none; margin-top: 10px; padding: 10px 13px; border-radius: 9px; border: 2px solid var(--border); background: #ffd9d0; color: #7a2510; font-weight: 700; font-size: 13px; }
   .err.on { display: block; }
 
   /* 로그인 */
   #s-login .card { max-width: 360px; margin: 60px auto 0; text-align: center; }
-  #s-login p { font-size: 13px; color: var(--muted); margin: 6px 0 14px; line-height: 1.6; }
+  #s-login p { font-size: 13px; color: var(--muted); font-weight: 600; margin: 6px 0 14px; line-height: 1.6; }
   #s-login input { width: 100%; text-align: center; letter-spacing: 4px; }
   #s-login .btn { width: 100%; margin-top: 12px; }
 
   /* 상태 스테퍼 */
   .stepper { display: flex; gap: 8px; flex-wrap: wrap; }
   .step { flex: 1; min-width: 110px; padding: 13px 8px; text-align: center; font-size: 13.5px; font-weight: 800; font-family: inherit;
-    border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--muted); cursor: pointer; }
-  .step small { display: block; font-weight: 500; font-size: 11px; margin-top: 3px; }
-  .step.on { border-color: var(--accent); background: #fbe9dd; color: var(--accent-dark); }
-  .step.done { border-color: var(--green-line); background: var(--green); color: var(--green-dark); }
+    border: 2.5px solid var(--border); border-radius: 12px; background: #fff; color: var(--muted); cursor: pointer; }
+  .step small { display: block; font-weight: 600; font-size: 11px; margin-top: 3px; }
+  .step.on { background: var(--accent2); color: var(--ink); box-shadow: 3px 3px 0 var(--border); }
+  .step.done { background: var(--green); color: var(--green-dark); }
 
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .mode-btn { padding: 10px 18px; font-size: 13.5px; font-weight: 800; font-family: inherit; border-radius: 999px; border: 2px solid var(--line); background: #fff; color: var(--muted); cursor: pointer; }
-  .mode-btn.on { border-color: var(--accent); background: #fbe9dd; color: var(--accent-dark); }
-  .pair-list { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.9; }
+  .mode-btn { padding: 10px 18px; font-size: 13.5px; font-weight: 800; font-family: inherit; border-radius: 999px; border: 2.5px solid var(--border); background: #fff; color: var(--muted); cursor: pointer; }
+  .mode-btn.on { background: var(--accent); color: var(--ink); box-shadow: 3px 3px 0 var(--border); }
+  .pair-list { font-size: 12.5px; color: var(--muted); font-weight: 600; margin-top: 10px; line-height: 1.9; }
   .pair-list b { color: var(--ink); }
 
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-  .stat { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; }
+  .stat { background: #fff; border: 2.5px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; box-shadow: 3px 3px 0 var(--border); }
   .stat .v { font-size: 24px; font-weight: 900; color: var(--accent-dark); }
-  .stat .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat .l { font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 2px; }
 
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
   @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
 
-  .p-item { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--line); background: #fff; border-radius: 11px; padding: 10px 12px; margin-top: 8px; font-size: 13px; line-height: 1.5; }
-  .p-item .tag { flex: none; font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 2px 7px; margin-top: 1px; }
+  .p-item { display: flex; align-items: flex-start; gap: 10px; border: 2px solid var(--border); background: #fff; border-radius: 11px; padding: 10px 12px; margin-top: 8px; font-size: 13px; font-weight: 600; line-height: 1.5; box-shadow: 2px 2px 0 var(--border); }
+  .p-item .tag { flex: none; font-size: 10.5px; font-weight: 900; border-radius: 4px; padding: 2px 7px; margin-top: 1px; border: 1.5px solid var(--border); }
   .p-item .tag.g { background: var(--green); color: var(--green-dark); }
   .p-item .tag.y { background: var(--yellow); color: var(--yellow-dark); }
   .p-item .body { flex: 1; }
-  .p-item .body small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .p-item .body small { display: block; color: var(--muted); font-weight: 700; font-size: 11.5px; margin-top: 2px; }
   .p-item .acts { display: flex; gap: 5px; flex: none; }
-  .p-item.spot { border-color: var(--accent); background: #fbf1e7; }
-  .hint { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .p-item.spot { background: #fff2e6; box-shadow: 3px 3px 0 var(--border); }
+  .hint { font-size: 12.5px; color: var(--muted); font-weight: 600; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -91,7 +95,7 @@
   <!-- 메인 -->
   <section id="s-main" class="hidden">
     <header class="top">
-      <h1><span id="icon-basket"></span>도움 벼룩시장</h1>
+      <h1><span class="icon-badge" id="icon-basket"></span>도움 벼룩시장</h1>
       <span class="role">교사용</span>
       <span class="code-chip">선택한 반 코드 <b id="class-code">----</b></span>
       <button class="btn sub sm" id="btn-logout">나가기</button>
@@ -196,7 +200,7 @@
       '<path d="' + d + '" stroke="' + color + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
   document.getElementById('icon-basket').innerHTML =
-    svg('M4 10 H20 L18 20 H6 Z M8 10 L12 4 L16 10 M9.5 14 V16.5 M14.5 14 V16.5', 24, '#b85c2c');
+    svg('M4 10 H20 L18 20 H6 Z M8 10 L12 4 L16 10 M9.5 14 V16.5 M14.5 14 V16.5', 20, '#201b13');
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

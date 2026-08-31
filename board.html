@@ -6,56 +6,51 @@
 <title>도움 벼룩시장 — 전광판</title>
 <style>
   :root {
-    --ink: #4a3f35; --muted: #9a8b7a;
-    --green: #cdeec2; --green-line: #86c97c; --green-dark: #3e7d33;
-    --yellow: #ffe9a8; --yellow-line: #e8c95c; --yellow-dark: #8a6d0d;
-    --accent: #d97742; --accent-dark: #b85c2c;
+    --bg: #f1ead6; --ink: #201b13; --muted: #746b58; --border: #201b13;
+    --green: #bfe793; --green-dark: #23511c;
+    --yellow: #ffdd6b; --yellow-dark: #6b4e05;
+    --accent: #e2793f; --accent-dark: #b85c2c; --accent2: #f0c23c;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
-    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color: var(--ink); overflow: hidden;
-    /* 코르크 보드 질감 */
-    background: #c9a876;
-    background-image: radial-gradient(rgba(255,255,255,.14) 1.5px, transparent 1.5px),
-                      radial-gradient(rgba(90,60,30,.12) 1.5px, transparent 1.5px);
-    background-size: 26px 26px, 34px 34px;
-    background-position: 0 0, 13px 17px;
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color: var(--ink); overflow: hidden;
+    background: var(--bg);
   }
   header {
-    display: flex; align-items: center; gap: 16px; padding: 14px 24px;
-    background: rgba(74,54,32,.88); color: #f7ecd9;
+    display: flex; align-items: center; gap: 16px; padding: 16px 26px;
+    background: var(--card, #fffcf3); background: #fffcf3; border-bottom: 3px solid var(--border);
   }
-  header h1 { font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
-  .st-chip { background: var(--accent); color: #fff; font-weight: 800; border-radius: 999px; padding: 5px 16px; font-size: 15px; }
-  .goal { font-size: 13px; opacity: .85; }
-  .counter { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
-  .counter b { font-size: 22px; color: #ffd98a; }
+  header h1 { font-size: 22px; font-weight: 900; display: flex; align-items: center; gap: 10px; }
+  .icon-badge { flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); border: 2.5px solid var(--border); display: flex; align-items: center; justify-content: center; }
+  .st-chip { background: var(--accent2); color: var(--ink); font-weight: 900; border: 2.5px solid var(--border); border-radius: 999px; padding: 5px 16px; font-size: 15px; box-shadow: 3px 3px 0 var(--border); }
+  .goal { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .counter { margin-left: auto; display: flex; gap: 18px; font-size: 15px; font-weight: 700; }
+  .counter b { font-size: 22px; color: var(--accent-dark); }
 
-  #board { position: relative; width: 100%; height: calc(100% - 62px); }
+  #board { position: relative; width: 100%; height: calc(100% - 68px); }
 
   .postit {
     position: absolute; width: 200px; min-height: 96px; padding: 30px 14px 12px;
-    font-size: 14.5px; line-height: 1.45; border-radius: 3px 3px 10px 3px;
-    box-shadow: 3px 5px 12px rgba(60,35,10,.3); word-break: break-word;
+    font-size: 14.5px; font-weight: 600; line-height: 1.45; border-radius: 3px 3px 10px 3px;
+    border: 2.5px solid var(--border); box-shadow: 4px 4px 0 var(--border); word-break: break-word;
     transition: opacity .5s, transform .5s;
   }
   .postit.green { background: var(--green); }
   .postit.yellow { background: var(--yellow); }
   .postit::before { /* 핀 */
     content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
-    width: 12px; height: 12px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #f08a5c, var(--accent-dark));
-    box-shadow: 0 2px 3px rgba(60,30,10,.4);
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--border);
   }
-  .postit .owner { position: absolute; top: 8px; left: 12px; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 4px; }
+  .postit .owner { position: absolute; top: 8px; left: 12px; font-size: 11.5px; font-weight: 900; display: flex; align-items: center; gap: 4px; }
   .postit.green .owner { color: var(--green-dark); }
   .postit.yellow .owner { color: var(--yellow-dark); }
-  .postit.matched { opacity: .65; }
+  .postit.matched { opacity: .7; }
   .postit .badge {
-    position: absolute; right: -8px; top: -8px; background: #fff; border-radius: 999px;
-    padding: 3px 9px; font-size: 10.5px; font-weight: 800; color: var(--accent-dark);
-    box-shadow: 0 2px 5px rgba(60,30,10,.3); display: flex; align-items: center; gap: 3px;
+    position: absolute; right: -10px; top: -11px; background: #fff; border: 2px solid var(--border); border-radius: 999px;
+    padding: 3px 9px; font-size: 10.5px; font-weight: 900; color: var(--ink);
+    box-shadow: 2px 2px 0 var(--border); display: flex; align-items: center; gap: 3px;
   }
   .postit.enter { animation: drop .6s cubic-bezier(.3,1.4,.5,1); }
   @keyframes drop {
@@ -64,37 +59,36 @@
 
   /* 스포트라이트 */
   #spot-bg {
-    position: fixed; inset: 0; background: rgba(40,25,10,.72); z-index: 30;
+    position: fixed; inset: 0; background: rgba(32,27,19,.78); z-index: 30;
     display: none; align-items: center; justify-content: center; flex-direction: column; gap: 22px;
   }
   #spot-bg.on { display: flex; }
-  .spot-title { color: #ffd98a; font-size: 30px; font-weight: 800; letter-spacing: 2px; display: flex; align-items: center; gap: 12px; }
+  .spot-title { color: var(--accent2); font-size: 30px; font-weight: 900; letter-spacing: 2px; display: flex; align-items: center; gap: 12px; }
   .spot-card {
-    width: min(560px, 86vw); padding: 60px 36px 36px; font-size: 30px; line-height: 1.5; font-weight: 700;
-    border-radius: 6px 6px 20px 6px; box-shadow: 0 14px 50px rgba(0,0,0,.5); position: relative;
+    width: min(560px, 86vw); padding: 60px 36px 36px; font-size: 30px; font-weight: 800; line-height: 1.5;
+    border: 3.5px solid var(--border); border-radius: 6px 6px 20px 6px; box-shadow: 9px 9px 0 var(--border); position: relative;
     animation: spotIn .5s cubic-bezier(.3,1.4,.5,1);
   }
   .spot-card.green { background: var(--green); }
   .spot-card.yellow { background: var(--yellow); }
   .spot-card::before { content: ''; position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
-    width: 20px; height: 20px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #f08a5c, var(--accent-dark)); box-shadow: 0 3px 6px rgba(0,0,0,.4); }
-  .spot-card .owner { position: absolute; top: 18px; left: 22px; font-size: 17px; font-weight: 800; }
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 2.5px solid var(--border); }
+  .spot-card .owner { position: absolute; top: 20px; left: 24px; font-size: 17px; font-weight: 900; }
   .spot-card.green .owner { color: var(--green-dark); }
   .spot-card.yellow .owner { color: var(--yellow-dark); }
   @keyframes spotIn { from { opacity: 0; transform: scale(.6) rotate(-4deg); } }
 
   .empty-msg {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: rgba(255,253,245,.92); border-radius: 16px; padding: 30px 44px;
-    text-align: center; font-size: 19px; font-weight: 700; color: var(--muted); line-height: 1.7;
-    box-shadow: 0 6px 20px rgba(60,35,10,.25);
+    background: #fffcf3; border: 2.5px solid var(--border); border-radius: 16px; padding: 30px 44px;
+    text-align: center; font-size: 19px; font-weight: 800; color: var(--muted); line-height: 1.7;
+    box-shadow: 5px 5px 0 var(--border);
   }
 </style>
 </head>
 <body>
 <header>
-  <h1><span id="icon-basket"></span>도움 벼룩시장 <span id="sess-name" style="font-size:15px;font-weight:700;opacity:.85"></span></h1>
+  <h1><span class="icon-badge" id="icon-basket"></span>도움 벼룩시장 <span id="sess-name" style="font-size:15px;font-weight:700;color:var(--muted)"></span></h1>
   <span class="st-chip" id="st-chip">대기</span>
   <span class="goal">받는 행복과 주는 행복, 오늘 둘 다 느껴보는 게 목표입니다.</span>
   <div class="counter">
@@ -105,13 +99,13 @@
 <div id="board"></div>
 
 <!-- 반 코드 입력 (최초 1회, localStorage 저장) -->
-<div id="code-entry" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(40,25,10,.6);align-items:center;justify-content:center">
-  <div style="background:#fffdf8;border-radius:18px;padding:34px 40px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.4)">
-    <p style="font-size:19px;font-weight:800;color:#b85c2c;margin-bottom:6px">어느 반의 전광판인가요?</p>
-    <p style="font-size:13px;color:#8a7c6d;margin-bottom:16px">교사 화면에서 발급된 4자리 반 코드를 입력하세요.</p>
-    <input id="code-input" inputmode="numeric" maxlength="4" style="width:180px;padding:14px;font-size:26px;text-align:center;letter-spacing:8px;border:2px solid #e8ddcc;border-radius:12px;font-family:inherit">
-    <button id="code-btn" style="display:block;width:100%;margin-top:14px;padding:13px;font-size:15px;font-weight:800;font-family:inherit;color:#fff;background:#d97742;border:none;border-radius:12px;cursor:pointer">전광판 열기</button>
-    <p id="code-err" style="display:none;margin-top:10px;color:#a83c22;font-size:13px"></p>
+<div id="code-entry" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(32,27,19,.62);align-items:center;justify-content:center">
+  <div style="background:#fffcf3;border:3px solid #201b13;border-radius:18px;padding:34px 40px;text-align:center;box-shadow:8px 8px 0 #201b13">
+    <p style="font-size:19px;font-weight:900;color:#201b13;margin-bottom:6px">어느 반의 전광판인가요?</p>
+    <p style="font-size:13px;font-weight:600;color:#746b58;margin-bottom:16px">교사 화면에서 발급된 4자리 반 코드를 입력하세요.</p>
+    <input id="code-input" inputmode="numeric" maxlength="4" style="width:180px;padding:14px;font-size:26px;font-weight:800;text-align:center;letter-spacing:8px;border:2.5px solid #201b13;border-radius:12px;font-family:inherit">
+    <button id="code-btn" style="display:block;width:100%;margin-top:14px;padding:13px;font-size:15px;font-weight:900;font-family:inherit;color:#201b13;background:#f0c23c;border:2.5px solid #201b13;border-radius:12px;cursor:pointer;box-shadow:4px 4px 0 #201b13">전광판 열기</button>
+    <p id="code-err" style="display:none;margin-top:10px;color:#7a2510;font-weight:700;font-size:13px"></p>
   </div>
 </div>
 
@@ -158,8 +152,8 @@
     link: 'M9 14 L15 8 M8 11 L6.5 12.5 a3.5 3.5 0 0 0 5 5 L13 16 M16 13 L17.5 11.5 a3.5 3.5 0 0 0 -5 -5 L11 8',
     mega: 'M3 11 V15 L7 15 L14 20 V6 L7 11 Z M17 9 A5 5 0 0 1 17 17'
   };
-  document.getElementById('icon-basket').innerHTML = svg(IC.basket, 26, '#ffd98a');
-  document.getElementById('icon-mega').innerHTML = svg(IC.mega, 30, '#ffd98a');
+  document.getElementById('icon-basket').innerHTML = svg(IC.basket, 22, '#201b13');
+  document.getElementById('icon-mega').innerHTML = svg(IC.mega, 30, '#f0c23c');
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -219,7 +213,7 @@
         var pos = hashPos(p.id);
         var isNew = !first && !known[p.id];
         var iconD = p.type === '초록' ? IC.give : IC.need;
-        var iconC = p.type === '초록' ? '#3e7d33' : '#8a6d0d';
+        var iconC = p.type === '초록' ? '#23511c' : '#6b4e05';
         return '<div class="postit ' + (p.type === '초록' ? 'green' : 'yellow') +
           (p.matched ? ' matched' : '') + (isNew ? ' enter' : '') + '"' +
           ' style="left:' + pos.x + '%;top:' + pos.y + '%;transform:rotate(' + pos.rot + 'deg)">' +
