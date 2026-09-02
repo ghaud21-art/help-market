@@ -16,10 +16,10 @@
   .wrap { max-width: 520px; margin: 0 auto; padding: 14px 14px 90px; }
   .hidden { display: none !important; }
 
+  .icon-badge { flex: none; border-radius: 50%; border: 2.5px solid var(--border); display: flex; align-items: center; justify-content: center; }
   .app-head { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; margin: 14px auto 4px;
     background: var(--card); border: 2.5px solid var(--border); border-radius: 14px; box-shadow: 4px 4px 0 var(--border); }
-  .app-head .icon-badge { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--accent);
-    border: 2.5px solid var(--border); display: flex; align-items: center; justify-content: center; }
+  .app-head .icon-badge { width: 40px; height: 40px; background: var(--accent); }
   .app-head-text { text-align: left; }
   .app-head h1 { font-size: 17px; font-weight: 900; color: var(--ink); }
   .goal { font-size: 11.5px; color: var(--muted); font-weight: 700; margin-top: 2px; line-height: 1.4; }
@@ -110,6 +110,32 @@
   .big-msg .d { font-size: 13.5px; color: var(--muted); font-weight: 600; margin-top: 8px; line-height: 1.7; }
   .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--border); margin: 0 auto; animation: pulse 1.4s ease infinite; }
   @keyframes pulse { 0%,100% { transform: scale(1); opacity: .5; } 50% { transform: scale(1.5); opacity: 1; } }
+
+  .btn.accent { background: var(--accent2); }
+  .result-actions { margin-top: 16px; }
+  .save-hint { font-size: 12px; color: var(--muted); font-weight: 600; text-align: center; margin-top: 10px; line-height: 1.6; }
+
+  /* 나눔 기록 카드 (성찰 완료 후) */
+  .rcert { background: var(--card); border: 2.5px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 5px 5px 0 var(--border); }
+  .rcert-head { background: var(--accent2); padding: 18px 20px 16px; border-bottom: 2.5px solid var(--border); text-align: center; }
+  .rcert-head .icon-badge { width: 40px; height: 40px; margin: 0 auto 6px; background: #fff; }
+  .rcert-title { font-size: 17px; font-weight: 900; }
+  .rcert-sub { font-size: 12px; font-weight: 700; color: var(--ink); opacity: .75; margin-top: 3px; }
+  .rcert-who { margin-top: 8px; font-size: 13px; font-weight: 800; }
+  .rcert-body { padding: 18px 20px; }
+  .rcert-sec { margin-bottom: 16px; }
+  .rcert-sec-title { font-size: 12.5px; font-weight: 900; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .rcert-chips { display: flex; flex-direction: column; gap: 7px; }
+  .rcert-chip { border: 2px solid var(--border); border-radius: 9px; padding: 8px 11px; font-size: 12.5px; font-weight: 600; line-height: 1.45; box-shadow: 2px 2px 0 var(--border); }
+  .rcert-chip.g { background: var(--green); }
+  .rcert-chip.y { background: var(--yellow); }
+  .rcert-empty { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .rcert-quote { border: 2px solid var(--border); border-radius: 10px; padding: 10px 13px; font-size: 13px; font-weight: 600; line-height: 1.55; background: #fff; margin-bottom: 8px; }
+  .rcert-quote b { display: block; font-size: 11px; font-weight: 900; color: var(--muted); margin-bottom: 3px; }
+  .rcert-ai { background: var(--accent2); border: 2.5px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: 3px 3px 0 var(--border); }
+  .rcert-ai-title { font-size: 12px; font-weight: 900; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .rcert-ai-text { font-size: 13.5px; font-weight: 700; line-height: 1.6; }
+  .rcert-foot { padding: 12px 20px 16px; text-align: center; font-size: 10.5px; font-weight: 700; color: var(--muted); border-top: 2px solid var(--border); }
 </style>
 </head>
 <body>
@@ -220,11 +246,26 @@
         <button class="btn" id="btn-reflect">제출하기</button>
         <div class="err" id="reflect-err"></div>
       </div>
-      <div class="card hidden" id="reflect-done">
+      <div class="card hidden" id="reflect-loading">
         <div class="big-msg">
-          <span id="icon-check"></span>
-          <p class="t">성찰까지 완료했어요</p>
-          <p class="d">받는 행복과 주는 행복,<br>오늘 둘 다 느껴봤나요?</p>
+          <div class="pulse"></div>
+          <p class="t">응원 메시지 만드는 중</p>
+          <p class="d" id="reflect-loading-msg">오늘 나눈 도움을 살펴보는 중…</p>
+        </div>
+      </div>
+      <div class="card hidden" id="reflect-retry">
+        <div class="big-msg">
+          <p class="t">응원 메시지가 잠시 늦어지고 있어요</p>
+          <p class="d" id="reflect-retry-msg"></p>
+          <p class="d">성찰 답변은 안전하게 저장되어 있어요. 메시지만 다시 만들면 됩니다.</p>
+        </div>
+        <button class="btn" id="btn-reflect-retry">다시 시도</button>
+      </div>
+      <div class="hidden" id="reflect-card-wrap">
+        <div id="reflect-card-holder"></div>
+        <div class="result-actions">
+          <button class="btn accent" id="btn-reflect-save"><span id="icon-camera"></span>이미지로 저장</button>
+          <p class="save-hint">저장한 이미지로 오늘의 나눔을 기억해 보세요.<br>파일명: <span id="reflect-save-name"></span></p>
         </div>
       </div>
     </div>
@@ -257,6 +298,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -302,7 +344,9 @@
     search: 'M10.5 4 a6.5 6.5 0 1 0 0 13 a6.5 6.5 0 0 0 0 -13 Z M15.5 15.5 L20 20',
     link: 'M9 14 L15 8 M8 11 L6.5 12.5 a3.5 3.5 0 0 0 5 5 L13 16 M16 13 L17.5 11.5 a3.5 3.5 0 0 0 -5 -5 L11 8',
     check: 'M4 12.5 L9.5 18 L20 6',
-    heart: 'M12 20 C7 16 4 13 4 9.5 C4 7 6 5 8.5 5 C10 5 11.3 5.8 12 7 C12.7 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 13 17 16 12 20 Z'
+    heart: 'M12 20 C7 16 4 13 4 9.5 C4 7 6 5 8.5 5 C10 5 11.3 5.8 12 7 C12.7 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 13 17 16 12 20 Z',
+    camera: 'M4 8 H7 L8.5 5.5 H15.5 L17 8 H20 V19 H4 Z M12 16 a3.5 3.5 0 1 0 0 -7 a3.5 3.5 0 0 0 0 7 Z',
+    star: 'M12 3 L14.5 9 L21 9.7 L16.2 14 L17.6 20.5 L12 17 L6.4 20.5 L7.8 14 L3 9.7 L9.5 9 Z'
   };
   document.getElementById('icon-basket').innerHTML = svg(IC.basket, 22, '#201b13');
   document.getElementById('icon-give').innerHTML = svg(IC.give, 16);
@@ -311,15 +355,15 @@
   document.getElementById('icon-need2').innerHTML = svg(IC.need, 16);
   document.getElementById('icon-search').innerHTML = svg(IC.search, 16, '#746b58');
   document.getElementById('icon-link').innerHTML = svg(IC.link, 18, '#201b13');
-  document.getElementById('icon-check').innerHTML = svg(IC.check, 40, '#23511c');
   document.getElementById('icon-heart').innerHTML = svg(IC.heart, 40, '#e2793f');
+  document.getElementById('icon-camera').innerHTML = svg(IC.camera, 17, '#201b13');
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   // ---------- 상태 ----------
-  var S = { sessionId: '', sessionName: '', sid: '', name: '', token: '', data: null, filter: 'all', search: '', pollId: null };
+  var S = { sessionId: '', sessionName: '', sid: '', name: '', token: '', data: null, filter: 'all', search: '', pollId: null, reflectCardState: 'none' };
   var LS_KEY = 'hm_session';
 
   var PLACEHOLDERS_G = ['수학 문제 풀이 차근차근 설명해줄 수 있어요', '필기 노트 빌려줄 수 있어요', '축구 리프팅 알려줄 수 있어요', '그림 그리는 법 알려줄 수 있어요'];
@@ -417,7 +461,12 @@
     else if (res.status === '성찰') {
       document.getElementById('v-reflect').classList.remove('hidden');
       document.getElementById('reflect-form').classList.toggle('hidden', res.reflectionDone);
-      document.getElementById('reflect-done').classList.toggle('hidden', !res.reflectionDone);
+      if (res.reflectionDone) {
+        if (S.reflectCardState === 'none') loadReflectCard();
+      } else {
+        S.reflectCardState = 'none';
+        setReflectSubview('none');
+      }
     }
     else if (res.status === '종료') {
       document.getElementById('v-end').classList.remove('hidden');
@@ -589,6 +638,100 @@
       applyState(res);
     } catch (e) { errEl.textContent = e.message; errEl.classList.add('on'); }
     finally { btn.disabled = false; }
+  });
+
+  // ---------- 성찰 완료 카드 (AI 응원 메시지 + 이미지 저장) ----------
+  function setReflectSubview(state) {
+    S.reflectCardState = state;
+    document.getElementById('reflect-loading').classList.toggle('hidden', state !== 'loading');
+    document.getElementById('reflect-retry').classList.toggle('hidden', state !== 'error');
+    document.getElementById('reflect-card-wrap').classList.toggle('hidden', state !== 'shown');
+  }
+
+  var REFLECT_LOADING_MSGS = ['오늘 나눈 도움을 살펴보는 중…', '성찰 답변을 읽는 중…', '응원 한마디 고르는 중…'];
+  var reflectLoadingTimer = null;
+
+  async function loadReflectCard() {
+    setReflectSubview('loading');
+    var i = 0;
+    var msgEl = document.getElementById('reflect-loading-msg');
+    msgEl.textContent = REFLECT_LOADING_MSGS[0];
+    clearInterval(reflectLoadingTimer);
+    reflectLoadingTimer = setInterval(function () {
+      i = (i + 1) % REFLECT_LOADING_MSGS.length;
+      msgEl.textContent = REFLECT_LOADING_MSGS[i];
+    }, 1800);
+
+    try {
+      var res = await api('generateReflectionCard', S.sessionId, S.sid);
+      clearInterval(reflectLoadingTimer);
+      renderReflectCard(res.card);
+      setReflectSubview('shown');
+    } catch (e) {
+      clearInterval(reflectLoadingTimer);
+      document.getElementById('reflect-retry-msg').textContent = e.message;
+      setReflectSubview('error');
+    }
+  }
+
+  document.getElementById('btn-reflect-retry').addEventListener('click', loadReflectCard);
+
+  function renderReflectCard(card) {
+    var givenHtml = card.given.length
+      ? card.given.map(function (g) {
+          return '<div class="rcert-chip g">' + esc(g.content) + (g.count > 1 ? ' <b>(' + g.count + '명과 나눔)</b>' : '') + '</div>';
+        }).join('')
+      : '<p class="rcert-empty">이번엔 준 도움 기록이 없어요.</p>';
+    var receivedHtml = card.received.length
+      ? card.received.map(function (r) {
+          return '<div class="rcert-chip y">' + esc(r.content) + (r.count > 1 ? ' <b>(' + r.count + '명에게 받음)</b>' : '') + '</div>';
+        }).join('')
+      : '<p class="rcert-empty">이번엔 받은 도움 기록이 없어요.</p>';
+
+    document.getElementById('reflect-card-holder').innerHTML =
+      '<div class="rcert">' +
+      '  <div class="rcert-head">' +
+      '    <div class="icon-badge">' + svg(IC.heart, 20, '#e2793f') + '</div>' +
+      '    <div class="rcert-title">도움 벼룩시장 나눔 기록</div>' +
+      '    <div class="rcert-sub">' + esc(card.session_name) + '</div>' +
+      '    <div class="rcert-who">' + esc(card.name) + ' (' + esc(card.sid) + ')</div>' +
+      '  </div>' +
+      '  <div class="rcert-body">' +
+      '    <div class="rcert-sec"><p class="rcert-sec-title">' + svg(IC.give, 14, '#23511c') + ' 내가 준 도움</p><div class="rcert-chips">' + givenHtml + '</div></div>' +
+      '    <div class="rcert-sec"><p class="rcert-sec-title">' + svg(IC.need, 14, '#6b4e05') + ' 내가 받은 도움</p><div class="rcert-chips">' + receivedHtml + '</div></div>' +
+      '    <div class="rcert-sec">' +
+      '      <p class="rcert-sec-title">오늘의 성찰</p>' +
+      '      <div class="rcert-quote"><b>도움을 줄 때</b>' + esc(card.giveFeel) + '</div>' +
+      '      <div class="rcert-quote"><b>도움을 받을 때</b>' + esc(card.receiveFeel) + '</div>' +
+      '    </div>' +
+      '    <div class="rcert-ai">' +
+      '      <p class="rcert-ai-title">' + svg(IC.star, 15, '#201b13') + ' 선생님의 응원</p>' +
+      '      <p class="rcert-ai-text">' + esc(card.encouragement) + '</p>' +
+      '    </div>' +
+      '  </div>' +
+      '  <div class="rcert-foot">도움 벼룩시장 · 행복함성 지니쌤</div>' +
+      '</div>';
+    document.getElementById('reflect-save-name').textContent = '도움벼룩시장_' + card.sid + '_' + card.name + '.png';
+  }
+
+  document.getElementById('btn-reflect-save').addEventListener('click', async function () {
+    var btn = this;
+    btn.disabled = true; btn.textContent = '이미지 만드는 중…';
+    try {
+      await document.fonts.ready; // 웹폰트 로드 완료 후 캡처 (캡처 깨짐 방지)
+      var rcert = document.querySelector('#reflect-card-holder .rcert');
+      var canvas = await html2canvas(rcert, { scale: 2, backgroundColor: '#fffcf3', useCORS: true });
+      var a = document.createElement('a');
+      a.download = '도움벼룩시장_' + S.sid + '_' + S.name + '.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    } catch (e) {
+      alert('이미지 저장에 실패했어요. 화면을 캡처해서 저장해도 됩니다.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span id="icon-camera"></span>이미지로 저장';
+      document.getElementById('icon-camera').innerHTML = svg(IC.camera, 17, '#201b13');
+    }
   });
 })();
 </script>

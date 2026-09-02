@@ -189,11 +189,84 @@ function submitReflection(sessionId, sid, giveFeel, receiveFeel) {
       var existing = readAll_('성찰').filter(function (r) {
         return r.session_id === sessionId && r['학번'] === sid;
       })[0];
-      var row = { session_id: sessionId, '학번': sid, '줄때마음': giveFeel, '받을때마음': receiveFeel, '작성시각': nowIso_() };
+      var row = {
+        session_id: sessionId, '학번': sid, '줄때마음': giveFeel, '받을때마음': receiveFeel,
+        '응원메시지': existing ? existing['응원메시지'] : '', '작성시각': nowIso_()
+      };
+      // 답변 내용을 고치면 예전 응원 메시지는 더 이상 맞지 않으므로 비워서 다음 조회 때 재생성
+      if (existing && (existing['줄때마음'] !== giveFeel || existing['받을때마음'] !== receiveFeel)) row['응원메시지'] = '';
       if (existing) updateRow_('성찰', existing._row, row);
       else appendRow_('성찰', row);
       touch_();
       return { ok: true };
+    });
+  } catch (e) { return err_(e.message || String(e)); }
+}
+
+/** 학생 본인이 주고받은 도움 요약 — 성찰 카드·AI 프롬프트 공용 */
+function givenReceivedSummary_(sessionId, sid) {
+  var inSession = function (r) { return r.session_id === sessionId; };
+  var nameBy = {};
+  readAll_('학생').filter(inSession).forEach(function (s) { nameBy[s['학번']] = s['이름']; });
+  var mine = readAll_('포스트잇').filter(inSession).filter(function (p) {
+    return p['학번'] === sid && p['매칭여부'] === 'Y';
+  });
+  var given = [], received = [];
+  mine.forEach(function (p) {
+    var withList = (p['매칭상대학번'] || '').split(',').filter(Boolean);
+    var item = {
+      content: p['내용'], count: withList.length,
+      partners: withList.map(function (x) { return nameBy[x] || x; })
+    };
+    (p['유형'] === '초록' ? given : received).push(item);
+  });
+  return { given: given, received: received };
+}
+
+/**
+ * 성찰 완료 카드 조회/생성. 이미 생성된 응원 메시지가 있으면 그대로 반환(재호출 없음).
+ * AI 실패 시 클라이언트가 [다시 시도]로 이 함수만 재호출 — 성찰 답변은 이미 저장돼 있으므로
+ * 응원 메시지 생성만 재시도한다 (성찰 재제출 불필요).
+ */
+function generateReflectionCard(sessionId, sid) {
+  try {
+    sessionId = String(sessionId || ''); sid = String(sid || '');
+    var session = findSessionById_(sessionId);
+    if (!session) return err_('반 정보를 찾을 수 없습니다.');
+    var student = findStudent_(sessionId, sid);
+    if (!student) return err_('입장 정보가 없습니다.');
+    var reflection = readAll_('성찰').filter(function (r) {
+      return r.session_id === sessionId && r['학번'] === sid;
+    })[0];
+    if (!reflection) return err_('아직 성찰을 제출하지 않았습니다.');
+
+    var summary = givenReceivedSummary_(sessionId, sid);
+    var card = {
+      session_name: session['반이름'], sid: sid, name: student['이름'],
+      given: summary.given, received: summary.received,
+      giveFeel: reflection['줄때마음'], receiveFeel: reflection['받을때마음'],
+      encouragement: reflection['응원메시지'] || ''
+    };
+    if (card.encouragement) return { ok: true, card: card };
+
+    // Gemini 호출은 락 밖에서 (다른 학생의 동시 요청을 막지 않기 위해)
+    var text = generateEncouragement_(
+      summary.given.map(function (g) { return g.content + (g.count > 1 ? ' (' + g.count + '명과 나눔)' : ''); }),
+      summary.received.map(function (r) { return r.content; }),
+      reflection['줄때마음'], reflection['받을때마음']
+    );
+
+    return withLock_(function () {
+      var again = readAll_('성찰').filter(function (r) {
+        return r.session_id === sessionId && r['학번'] === sid;
+      })[0];
+      if (!again) return err_('성찰 기록을 찾을 수 없습니다.');
+      if (!again['응원메시지']) {
+        again['응원메시지'] = text;
+        updateRow_('성찰', again._row, again);
+      }
+      card.encouragement = again['응원메시지'] || text;
+      return { ok: true, card: card };
     });
   } catch (e) { return err_(e.message || String(e)); }
 }
@@ -214,6 +287,7 @@ function getBoardState(code, token) {
     students.forEach(function (s) { nameBy[s['학번']] = s['이름']; });
     var postits = readAll_('포스트잇').filter(inSession).filter(function (p) { return p['숨김'] !== 'Y'; });
     var matched = postits.filter(function (p) { return p['매칭여부'] === 'Y'; });
+    var shares = readAll_('매칭기록').filter(inSession).length;
 
     return {
       ok: true, changed: true, token: cur,
@@ -221,7 +295,7 @@ function getBoardState(code, token) {
       status: session['상태'], mode: session['모드'],
       postits: postits.map(function (p) { return postitDto_(p, nameBy); }),
       spotlightId: session['스포트라이트'] || '',
-      counts: { total: postits.length, matched: matched.length, students: students.length }
+      counts: { total: postits.length, matched: matched.length, students: students.length, shares: shares }
     };
   } catch (e) { return err_(e.message || String(e)); }
 }

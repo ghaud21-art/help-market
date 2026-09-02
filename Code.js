@@ -30,6 +30,7 @@ function doPost(e) {
       joinStudent: joinStudent, getStudentState: getStudentState,
       addPostit: addPostit, recordShare: recordShare, submitReflection: submitReflection,
       getBoardState: getBoardState,
+      generateReflectionCard: generateReflectionCard,
       teacherLogin: teacherLogin, getTeacherState: getTeacherState,
       teacherCreateSession: teacherCreateSession, teacherDeleteSession: teacherDeleteSession,
       teacherSetStatus: teacherSetStatus, teacherSetMode: teacherSetMode,
@@ -51,9 +52,10 @@ function doPost(e) {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('🧺 도움 벼룩시장')
     .addItem('① DB 초기화 (최초 1회)', 'menuSetup')
-    .addItem('② 웹앱 배포 방법 안내', 'menuDeployHelp')
-    .addItem('③ 링크 만들기', 'menuMakeLinks')
-    .addItem('④ 교사 코드 재설정', 'menuResetTeacherCode')
+    .addItem('② Gemini API 키 설정 (성찰 응원 메시지용)', 'menuSetApiKey')
+    .addItem('③ 웹앱 배포 방법 안내', 'menuDeployHelp')
+    .addItem('④ 링크 만들기', 'menuMakeLinks')
+    .addItem('⑤ 교사 코드 재설정', 'menuResetTeacherCode')
     .addSeparator()
     .addItem('테스트 데이터 생성 (시연용)', 'menuSeed')
     .addItem('테스트 데이터 삭제', 'menuSeedDelete')
@@ -68,8 +70,23 @@ function menuSetup() {
     '교사 코드: ' + getSetting_('교사코드') + ' (교사 화면 입장용 — 학생에게 비공개)\n\n' +
     '반 코드는 교사 화면에서 [새 반 만들기]를 하면 반마다 발급됩니다.\n' +
     '여러 반을 동시에 운영해도 데이터가 반별로 완전히 분리돼요.\n\n' +
-    '이어서 [② 웹앱 배포 방법 안내]를 진행하세요.',
+    '이어서 [② Gemini API 키 설정]과 [③ 웹앱 배포 방법 안내]를 진행하세요.',
     SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+function menuSetApiKey() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.prompt('Gemini API 키 설정',
+    'Google AI Studio(aistudio.google.com)에서 발급한 API 키를 붙여넣으세요.\n' +
+    '키는 이 스크립트 속성에만 저장되며 학생에게 노출되지 않습니다.\n\n' +
+    '이 키가 있어야 성찰 단계에서 AI 응원 메시지가 생성됩니다. 설정하지 않아도\n' +
+    '나머지 기능(포스트잇·나눔·전광판 등)은 그대로 사용할 수 있어요.',
+    ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  var key = res.getResponseText().trim();
+  if (!key) { ui.alert('키가 비어 있습니다.'); return; }
+  PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', key);
+  ui.alert('저장되었습니다. 이제 성찰 제출 시 AI 응원 메시지가 함께 만들어져요.');
 }
 
 function menuDeployHelp() {
@@ -78,7 +95,7 @@ function menuDeployHelp() {
     '2. 우측 상단 [배포] → 새 배포 → 유형 "웹 앱"\n' +
     '3. 실행 사용자: 나 / 액세스 권한: 모든 사용자\n' +
     '4. 발급된 웹앱 URL을 복사\n' +
-    '5. 시트 메뉴 [③ 링크 만들기]에 붙여넣으면 학생/전광판/교사 링크가 생성됩니다\n\n' +
+    '5. 시트 메뉴 [④ 링크 만들기]에 붙여넣으면 학생/전광판/교사 링크가 생성됩니다\n\n' +
     '★ 코드를 수정한 뒤에는 [배포]→[배포 관리]→[새 버전]으로 재배포해야 반영됩니다 (URL은 유지).',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
@@ -94,7 +111,7 @@ function menuMakeLinks() {
 
   var input = res.getResponseText().trim();
   var url = input || stored;
-  if (!url) { ui.alert('배포 URL을 입력해 주세요. [② 웹앱 배포 방법 안내]를 참고하세요.'); return; }
+  if (!url) { ui.alert('배포 URL을 입력해 주세요. [③ 웹앱 배포 방법 안내]를 참고하세요.'); return; }
   if (input) setSetting_('웹앱주소', url);
 
   var html = HtmlService.createHtmlOutput(

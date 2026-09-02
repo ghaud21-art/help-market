@@ -14,7 +14,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
-    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color: var(--ink); overflow: hidden;
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color: var(--ink);
     background: var(--bg);
   }
   header {
@@ -25,19 +25,32 @@
   .icon-badge { flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); border: 2.5px solid var(--border); display: flex; align-items: center; justify-content: center; }
   .st-chip { background: var(--accent2); color: var(--ink); font-weight: 900; border: 2.5px solid var(--border); border-radius: 999px; padding: 5px 16px; font-size: 15px; box-shadow: 3px 3px 0 var(--border); }
   .goal { font-size: 13px; font-weight: 700; color: var(--muted); }
-  .counter { margin-left: auto; display: flex; gap: 18px; font-size: 15px; font-weight: 700; }
+  .counter { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 15px; font-weight: 700; }
   .counter b { font-size: 22px; color: var(--accent-dark); }
+  .counter .share-count {
+    display: flex; align-items: center; gap: 6px; background: var(--accent2); color: var(--ink);
+    border: 2.5px solid var(--border); border-radius: 999px; padding: 6px 16px 6px 12px; box-shadow: 3px 3px 0 var(--border);
+  }
+  .counter .share-count b { font-size: 24px; color: var(--ink); }
 
-  #board { position: relative; width: 100%; height: calc(100% - 68px); }
+  /*
+   * 절대좌표 무작위 배치는 카드 수가 늘면 서로 겹쳐 뒤 카드(주로 나중에 쓰는 노랑)가
+   * 먼저 쓴 초록 카드를 가리는 문제가 있었다 → 겹침이 원천 불가능한 flex-wrap 그리드로 변경.
+   */
+  #board { position: relative; width: 100%; height: calc(100% - 68px); overflow-y: auto;
+    display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px; padding: 26px; }
 
   .postit {
-    position: absolute; width: 200px; min-height: 96px; padding: 30px 14px 12px;
+    position: relative; width: 210px; min-height: 100px; padding: 30px 14px 12px;
     font-size: 14.5px; font-weight: 600; line-height: 1.45; border-radius: 3px 3px 10px 3px;
     border: 2.5px solid var(--border); box-shadow: 4px 4px 0 var(--border); word-break: break-word;
-    transition: opacity .5s, transform .5s;
+    transition: opacity .3s;
   }
   .postit.green { background: var(--green); }
   .postit.yellow { background: var(--yellow); }
+  #board .postit:nth-child(3n) { transform: rotate(-2deg); }
+  #board .postit:nth-child(3n+1) { transform: rotate(1.5deg); }
+  #board .postit:nth-child(3n+2) { transform: rotate(-1deg); }
   .postit::before { /* 핀 */
     content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
     width: 13px; height: 13px; border-radius: 50%;
@@ -52,9 +65,9 @@
     padding: 3px 9px; font-size: 10.5px; font-weight: 900; color: var(--ink);
     box-shadow: 2px 2px 0 var(--border); display: flex; align-items: center; gap: 3px;
   }
-  .postit.enter { animation: drop .6s cubic-bezier(.3,1.4,.5,1); }
+  .postit.enter { animation: drop .5s cubic-bezier(.3,1.4,.5,1); }
   @keyframes drop {
-    from { opacity: 0; transform: translateY(-40px) scale(1.15) rotate(0deg) !important; }
+    from { opacity: 0; transform: scale(1.12) translateY(-16px); }
   }
 
   /* 스포트라이트 */
@@ -92,8 +105,8 @@
   <span class="st-chip" id="st-chip">대기</span>
   <span class="goal">받는 행복과 주는 행복, 오늘 둘 다 느껴보는 게 목표입니다.</span>
   <div class="counter">
-    <span>포스트잇 <b id="c-total">0</b></span>
-    <span>나눔 완료 <b id="c-matched">0</b></span>
+    <span>포스트잇 <b id="c-total">0</b>장</span>
+    <span class="share-count"><span id="icon-share"></span>나눔 <b id="c-shares">0</b>번</span>
   </div>
 </header>
 <div id="board"></div>
@@ -154,20 +167,10 @@
   };
   document.getElementById('icon-basket').innerHTML = svg(IC.basket, 22, '#201b13');
   document.getElementById('icon-mega').innerHTML = svg(IC.mega, 30, '#f0c23c');
+  document.getElementById('icon-share').innerHTML = svg(IC.link, 17, '#201b13');
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  /** id 해시 → 고정 위치·기울기 (폴링마다 위치가 안 흔들리게) */
-  function hashPos(id) {
-    var h = 0;
-    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-    return {
-      x: 3 + (h % 1000) / 1000 * 78,             // 3% ~ 81%
-      y: 4 + ((h >> 10) % 1000) / 1000 * 68,     // 4% ~ 72%
-      rot: -6 + ((h >> 20) % 120) / 10           // -6deg ~ +6deg
-    };
   }
 
   var token = '';
@@ -202,7 +205,7 @@
     document.getElementById('st-chip').textContent = data.status;
     document.getElementById('sess-name').textContent = data.session_name ? '— ' + data.session_name : '';
     document.getElementById('c-total').textContent = data.counts.total;
-    document.getElementById('c-matched').textContent = data.counts.matched;
+    document.getElementById('c-shares').textContent = data.counts.shares;
 
     var board = document.getElementById('board');
     if (!data.postits.length) {
@@ -210,13 +213,11 @@
       known = {};
     } else {
       board.innerHTML = data.postits.map(function (p) {
-        var pos = hashPos(p.id);
         var isNew = !first && !known[p.id];
         var iconD = p.type === '초록' ? IC.give : IC.need;
         var iconC = p.type === '초록' ? '#23511c' : '#6b4e05';
         return '<div class="postit ' + (p.type === '초록' ? 'green' : 'yellow') +
-          (p.matched ? ' matched' : '') + (isNew ? ' enter' : '') + '"' +
-          ' style="left:' + pos.x + '%;top:' + pos.y + '%;transform:rotate(' + pos.rot + 'deg)">' +
+          (p.matched ? ' matched' : '') + (isNew ? ' enter' : '') + '">' +
           (p.matched ? '<span class="badge">' + svg(IC.link, 10, '#b85c2c') + ' 나눔 ' + (p.matchCount || 1) + '회</span>' : '') +
           '<span class="owner">' + svg(iconD, 13, iconC) + esc(p.name) + '</span>' +
           esc(p.content) + '</div>';
