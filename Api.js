@@ -36,22 +36,25 @@ function joinStudent(code, sid, name) {
     return withLock_(function () {
       if (!findStudent_(session.session_id, sid)) {
         appendRow_('학생', { session_id: session.session_id, '학번': sid, '이름': name, '짝학번': '', '입장시각': nowIso_() });
-        touch_();
+        touchSession_(session.session_id);
       }
       return getStudentState(session.session_id, sid, '');
     });
   } catch (e) { return err_(e.message || String(e)); }
 }
 
-/** 학생 화면 폴링 (4초). token이 갱신토큰과 같으면 changed:false만 반환. */
+/**
+ * 학생 화면 폴링 (4초). token이 "이 반"의 갱신토큰과 같으면 changed:false만 반환.
+ * 반마다 토큰이 독립이라 다른 반의 활동은 이 학생의 재조회를 유발하지 않는다.
+ */
 function getStudentState(sessionId, sid, token) {
   try {
     sessionId = String(sessionId || ''); sid = String(sid || '');
-    var cur = getToken_();
-    if (token && token === cur) return { ok: true, changed: false, token: cur };
-
     var session = findSessionById_(sessionId);
     if (!session) return err_('반 정보를 찾을 수 없습니다. 다시 입장해 주세요.');
+    var cur = getSessionToken_(session);
+    if (token && token === cur) return { ok: true, changed: false, token: cur };
+
     var me = findStudent_(sessionId, sid);
     if (!me) return err_('입장 정보가 없습니다. 다시 입장해 주세요.');
 
@@ -123,7 +126,7 @@ function addPostit(sessionId, sid, type, content) {
         id: shortId_(), session_id: sessionId, '학번': sid, '유형': type, '내용': content,
         '매칭여부': '', '매칭상대학번': '', '숨김': '', '작성시각': nowIso_()
       });
-      touch_();
+      touchSession_(sessionId);
       return { ok: true };
     });
   } catch (e) { return err_(e.message || String(e)); }
@@ -169,7 +172,7 @@ function recordShare(sessionId, sid, partnerSid, postitIds, note) {
         session['스포트라이트'] = '';
         updateRow_('반', session._row, session);
       }
-      touch_();
+      touchSession_(sessionId);
       return { ok: true };
     });
   } catch (e) { return err_(e.message || String(e)); }
@@ -197,7 +200,7 @@ function submitReflection(sessionId, sid, giveFeel, receiveFeel) {
       if (existing && (existing['줄때마음'] !== giveFeel || existing['받을때마음'] !== receiveFeel)) row['응원메시지'] = '';
       if (existing) updateRow_('성찰', existing._row, row);
       else appendRow_('성찰', row);
-      touch_();
+      touchSession_(sessionId);
       return { ok: true };
     });
   } catch (e) { return err_(e.message || String(e)); }
@@ -277,7 +280,7 @@ function getBoardState(code, token) {
   try {
     var session = findSessionByCode_(String(code || ''));
     if (!session) return err_('반 코드를 찾을 수 없습니다.');
-    var cur = getToken_();
+    var cur = getSessionToken_(session);
     if (token && token === cur) return { ok: true, changed: false, token: cur };
 
     var sessionId = session.session_id;
@@ -322,7 +325,7 @@ function teacherCreateSession(key, name) {
     return withLock_(function () {
       var session = {
         session_id: shortId_(), '반이름': name, '반코드': generateCode_(),
-        '상태': '대기', '모드': '자유', '스포트라이트': '', '생성시각': nowIso_()
+        '상태': '대기', '모드': '자유', '스포트라이트': '', '갱신토큰': String(new Date().getTime()), '생성시각': nowIso_()
       };
       appendRow_('반', session);
       touch_();
@@ -354,11 +357,12 @@ function teacherDeleteSession(key, sessionId) {
 function getTeacherState(key, sessionId, token) {
   try {
     requireTeacher_(key);
-    var cur = getToken_();
+    sessionId = String(sessionId || '');
+    var session = sessionId ? findSessionById_(sessionId) : null;
+    // 선택한 반의 토큰 + 전역 토큰(반 목록·다른 반 생성/삭제 감지)을 함께 비교
+    var cur = (session ? getSessionToken_(session) : '0') + '|' + getToken_();
     if (token && token === cur) return { ok: true, changed: false, token: cur };
 
-    sessionId = String(sessionId || '');
-    var session = findSessionById_(sessionId);
     var sessions = readAll_('반').map(sessionDto_);
     if (!session) return { ok: true, changed: true, token: cur, sessions: sessions, session: null };
 
@@ -403,7 +407,7 @@ function teacherSetStatus(key, sessionId, status) {
       if (!session) return err_('반을 찾을 수 없습니다.');
       session['상태'] = status;
       updateRow_('반', session._row, session);
-      touch_();
+      touchSession_(session.session_id);
       return { ok: true, status: status };
     });
   } catch (e) { return err_(e.message || String(e)); }
@@ -425,7 +429,7 @@ function teacherSetMode(key, sessionId, mode) {
         });
         if (!hasPairs) shufflePairs_(session.session_id);
       }
-      touch_();
+      touchSession_(session.session_id);
       return { ok: true, mode: mode };
     });
   } catch (e) { return err_(e.message || String(e)); }
@@ -435,9 +439,10 @@ function teacherSetMode(key, sessionId, mode) {
 function teacherShufflePairs(key, sessionId) {
   try {
     requireTeacher_(key);
+    sessionId = String(sessionId || '');
     return withLock_(function () {
-      var n = shufflePairs_(String(sessionId || ''));
-      touch_();
+      var n = shufflePairs_(sessionId);
+      touchSession_(sessionId);
       return { ok: true, groups: n };
     });
   } catch (e) { return err_(e.message || String(e)); }
@@ -484,7 +489,7 @@ function teacherSpotlight(key, sessionId, postitId) {
       }
       session['스포트라이트'] = postitId;
       updateRow_('반', session._row, session);
-      touch_();
+      touchSession_(session.session_id);
       return { ok: true };
     });
   } catch (e) { return err_(e.message || String(e)); }
@@ -506,7 +511,7 @@ function teacherHidePostit(key, postitId, hidden) {
           updateRow_('반', session._row, session);
         }
       }
-      touch_();
+      touchSession_(p.session_id);
       return { ok: true };
     });
   } catch (e) { return err_(e.message || String(e)); }

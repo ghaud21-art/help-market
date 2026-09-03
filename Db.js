@@ -6,7 +6,7 @@
 
 var SHEET_SCHEMA = {
   '설정': ['키', '값'],
-  '반': ['session_id', '반이름', '반코드', '상태', '모드', '스포트라이트', '생성시각'],
+  '반': ['session_id', '반이름', '반코드', '상태', '모드', '스포트라이트', '생성시각', '갱신토큰'],
   '학생': ['session_id', '학번', '이름', '짝학번', '입장시각'],
   '포스트잇': ['id', 'session_id', '학번', '유형', '내용', '매칭여부', '매칭상대학번', '숨김', '작성시각'],
   '매칭기록': ['id', 'session_id', '학생A학번', '학생B학번', '내용', '기록시각'],
@@ -53,7 +53,12 @@ function setupDatabase() {
   return ss.getUrl();
 }
 
-/** 변경 토큰 갱신 — 클라이언트 폴링이 변경분만 다시 불러오게 하는 기준값 */
+/**
+ * 변경 토큰 갱신 — 클라이언트 폴링이 변경분만 다시 불러오게 하는 기준값.
+ * 전역 토큰(설정 시트)은 교사 화면의 "반 목록" 갱신용으로만 쓴다.
+ * 학생·전광판 폴링은 touchSession_()으로 그 반의 토큰만 갱신해, 다른 반의
+ * 활동이 이 반 학생들의 재조회를 유발하지 않게 한다 (여러 반 동시 운영 시 렉의 주 원인이었음).
+ */
 function touch_() {
   setSetting_('갱신토큰', String(new Date().getTime()));
 }
@@ -62,21 +67,55 @@ function getToken_() {
   return getSetting_('갱신토큰') || '0';
 }
 
+/** 특정 반의 토큰만 갱신 (그 반 학생·전광판만 다음 폴링에 재조회) + 전역 토큰도 함께 갱신(교사 목록용) */
+function touchSession_(sessionId) {
+  touch_();
+  var session = findSessionById_(sessionId);
+  if (!session) return;
+  session['갱신토큰'] = String(new Date().getTime());
+  updateRow_('반', session._row, session);
+}
+
+function getSessionToken_(session) {
+  return session['갱신토큰'] || '0';
+}
+
 // ---------- 공통 헬퍼 ----------
 
+/**
+ * 시트 전체 읽기 + 짧은 캐시(4초). 폴링은 반마다 4초 간격으로 여러 학생이 동시에
+ * 같은 시트를 반복해서 읽으므로, 캐시 없이는 학생 수만큼 Sheets API 호출이 배가되어
+ * 지연(렉)의 주 원인이 된다. 쓰기 직후에는 invalidateCache_()로 즉시 무효화해
+ * 같은 요청 안에서도(예: 여러 포스트잇을 연속 갱신) 항상 최신값을 본다.
+ */
 function readAll_(sheetName) {
+  var cache = CacheService.getScriptCache();
+  var key = 'tbl_' + sheetName;
+  try {
+    var hit = cache.get(key);
+    if (hit !== null) return JSON.parse(hit);
+  } catch (e) { /* 캐시 조회 실패는 무시하고 시트에서 읽는다 */ }
+
   var sheet = getSs_().getSheetByName(sheetName);
   if (!sheet) return [];
   var values = sheet.getDataRange().getValues();
-  if (values.length < 2) return [];
-  var headers = values[0].map(String);
-  return values.slice(1).filter(function (row) {
-    return row.join('') !== '';
-  }).map(function (row, i) {
-    var obj = { _row: i + 2 };
-    headers.forEach(function (h, c) { obj[h] = String(row[c]); });
-    return obj;
-  });
+  var rows = [];
+  if (values.length >= 2) {
+    var headers = values[0].map(String);
+    rows = values.slice(1).filter(function (row) {
+      return row.join('') !== '';
+    }).map(function (row, i) {
+      var obj = { _row: i + 2 };
+      headers.forEach(function (h, c) { obj[h] = String(row[c]); });
+      return obj;
+    });
+  }
+  try { cache.put(key, JSON.stringify(rows), 4); } catch (e) { /* 100KB 초과 등은 캐시 없이 계속 */ }
+  return rows;
+}
+
+function invalidateCache_(sheetName) {
+  try { CacheService.getScriptCache().remove('tbl_' + sheetName); } catch (e) {}
 }
 
 function appendRow_(sheetName, obj) {
@@ -84,6 +123,7 @@ function appendRow_(sheetName, obj) {
   var headers = SHEET_SCHEMA[sheetName];
   var row = headers.map(function (h) { return obj[h] !== undefined ? String(obj[h]) : ''; });
   sheet.appendRow(row);
+  invalidateCache_(sheetName);
 }
 
 function updateRow_(sheetName, rowIndex, obj) {
@@ -91,12 +131,14 @@ function updateRow_(sheetName, rowIndex, obj) {
   var headers = SHEET_SCHEMA[sheetName];
   var row = headers.map(function (h) { return obj[h] !== undefined ? String(obj[h]) : ''; });
   sheet.getRange(rowIndex, 1, 1, headers.length).setValues([row]);
+  invalidateCache_(sheetName);
 }
 
 function deleteRowsWhere_(sheetName, predicate) {
   var rows = readAll_(sheetName).filter(predicate);
   rows.sort(function (a, b) { return b._row - a._row; });
   rows.forEach(function (r) { getSs_().getSheetByName(sheetName).deleteRow(r._row); });
+  if (rows.length) invalidateCache_(sheetName);
   return rows.length;
 }
 
@@ -220,7 +262,7 @@ function buildManualSheet_() {
     ['blank', '', ''],
     ['section', '5. 시트(탭) 구성 — 자동 기록되므로 직접 수정은 최소화하세요', ''],
     ['kv', '설정', '교사코드·gemini_model 등 (교사코드는 교사 화면 입장용 — 학생에게 알려주지 마세요)'],
-    ['kv', '반', '만들어진 반 목록: 반 코드·진행 상태·모드 (교사 화면 사용 권장)'],
+    ['kv', '반', '만들어진 반 목록: 반 코드·진행 상태·모드·갱신토큰(반별 폴링 갱신용, 자동) (교사 화면 사용 권장)'],
     ['kv', '학생 / 포스트잇', '입장한 학생 / 작성된 포스트잇 (자동, 반별 분리)'],
     ['kv', '매칭기록 / 성찰', '나눔 기록 / 성찰 답변 + AI 응원 메시지(응원메시지 열, 자동 캐시)'],
     ['warn', '⚠ 학번 열은 텍스트 서식이 강제되어 있습니다 (앞자리 0 유실 방지). 서식을 바꾸지 마세요.', ''],
@@ -231,6 +273,7 @@ function buildManualSheet_() {
     ['kv', '다음 반 수업에 또 쓰려면', '교사 화면에서 [새 반 만들기]만 하면 됩니다 — 반마다 데이터가 분리되어 포스트잇이 섞이지 않아요. 학기 말 정리는 메뉴 [전체 활동 데이터 삭제]'],
     ['kv', '응원 메시지가 안 나와요', '[② Gemini API 키 설정]을 했는지 확인하세요. 학생 화면에 뜨는 [다시 시도] 버튼은 저장된 성찰 답변으로 메시지만 재생성합니다(성찰 재작성 불필요).'],
     ['kv', '테스트해보고 싶어요', '메뉴 [테스트 데이터 생성] → "테스트 반(샘플)"과 가상 학생(김하늘·이도윤·박새봄)이 생깁니다. 전광판에 표시된 반 코드를 넣어 바로 확인'],
+    ['kv', '화면이 느려요', '시트 메뉴 [① DB 초기화]를 한 번 더 실행해 주세요 — 반 목록 시트에 갱신토큰 열이 추가되어야 반별로 독립적으로 빠르게 갱신됩니다(예전 버전은 한 반의 활동이 다른 반 학생들 화면까지 매번 다시 불러오게 했습니다).'],
     ['blank', '', ''],
     ['section', '7. 저작권 및 문의', ''],
     ['text', '• 교육 목적으로 자유롭게 사용·수정할 수 있습니다. 재배포 시 출처를 남겨 주세요.', ''],
